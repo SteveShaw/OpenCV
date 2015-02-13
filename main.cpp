@@ -10,16 +10,34 @@
 #include <QString>
 //#include "colorimagewriter.h"
 
+void LoadDBSettings(const char* path)
+{
+	QSettings db_config(QString(path),QSettings::IniFormat);
+	QString host = db_config.value("host").toString();
+	QString user = db_config.value("user").toString();
+	QString pwd = db_config.value("password").toString();
+	QString db_name = db_config.value("db").toString();
 
+	qDebug()<<host;
+	qDebug()<<user;
+	qDebug()<<pwd;
+	qDebug()<<db_name;
+}
 
 int main(int argc, char *argv[])
 {
-	//    QCoreApplication a(argc, argv);
 
 
+//	QString path = QCoreApplication::applicationDirPath()+"/config.ini";
+//	qDebug()<<path;
+//	LoadDBSettings(path.toStdString().c_str());
+
+//	return a.exec();
 
 
 	QScopedPointer<KinectCapture> kc(new KinectCapture);
+
+
 
 	void* ctx = zmq_ctx_new();
 	void* sender = zmq_socket(ctx,ZMQ_PUB);
@@ -40,10 +58,15 @@ int main(int argc, char *argv[])
 		kc->SetSaveDirectory(argv[1]);
 	}
 
+	if(argc>=3)
+	{
+		kc->SetFrameCount(QString(argv[2]).toInt());
+	}
+
+	DBThread *wr = new DBThread(kc.data(),ctx);
+	wr->setAutoDelete(true);
 	Worker *wk = new Worker(kc.data(),ctx);
 	wk->setAutoDelete(true);
-	WriterBase *wr = new WriterBase(kc.data(),ctx);
-	wr->setAutoDelete(true);
 	//ColorImageWriter* clr_wrt = new ColorImageWriter(kc.data(),ctx);
 	//clr_wrt->setAutoDelete(true);
 	//QThreadPool::globalInstance()->start(clr_wrt);
@@ -65,6 +88,4 @@ int main(int argc, char *argv[])
 	//    delete wk;
 	//    delete kc;
 
-
-	//    return a.exec();
 }

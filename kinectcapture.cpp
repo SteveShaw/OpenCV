@@ -2,7 +2,7 @@
 #include <QDebug>
 #include <QDateTime>
 
-#define FRAMECOUNT 900
+#define FRAMECOUNT 300
 
 KinectCapture::KinectCapture()
 	:_iks(nullptr)
@@ -15,8 +15,9 @@ KinectCapture::KinectCapture()
 	,m_color_video_writer(new cv::VideoWriter)
 	,m_depth_video_writer(new cv::VideoWriter)
 	,m_frame_count(0)
+	,m_max_frame_count(FRAMECOUNT)
 {
-	qDebug()<<"Color Image Size="<<ColorImageSize;
+	//qDebug()<<"Color Image Size="<<ColorImageSize;
 }
 
 KinectCapture::~KinectCapture()
@@ -83,6 +84,8 @@ bool KinectCapture::Initialize()
 	{
 		m_depth_video_writer->release();
 	}
+
+	//m_encoder.close();
 
 	//    IColorFrameSource *pColorSource = NULL;
 
@@ -159,10 +162,21 @@ bool KinectCapture::ProcessArrivedFrame(IMultiSourceFrameArrivedEventArgs *args)
 			++m_frame_count;
 			//qDebug()<<"Count="<<m_frame_count;
 
-			if(m_frame_count==FRAMECOUNT)
+			if(m_frame_count==m_max_frame_count)
 			{
-				qDebug()<<"Record";
+				m_db_item.end = QDateTime::currentDateTime().toString(m_tm_fmt);
 				m_frame_count = 0;
+				//m_encoder.close();
+
+				if(m_depth_video_writer->isOpened())
+				{
+					m_depth_video_writer->release();
+				}
+
+				if(m_color_video_writer->isOpened())
+				{
+					m_color_video_writer->release();
+				}
 			}
 			sf->Release();
 			result = true;
@@ -245,13 +259,11 @@ void KinectCapture::CaptureDepthFrame(IMultiSourceFrame *sf, int frame_count)
 
 					if(frame_count==0)
 					{
-						if(m_depth_video_writer->isOpened())
-						{
-							m_depth_video_writer->release();
-						}
 
-						QString path = m_save_dir.absoluteFilePath("Depth_"+QDateTime::currentDateTime().toString(m_tm_fmt)+".avi");
-						m_depth_video_writer->open(path.toStdString().c_str(),-1,8.0,
+						QString path = m_save_dir.absoluteFilePath("Depth_"+QDateTime::currentDateTime().toString(m_tm_fmt)+".m4v");
+						m_depth_video_writer->open(path.toStdString().c_str(),
+																			 CV_FOURCC('m','p','4','v')
+																			 ,8.0,
 																			 //cv::Size(704,576));
 																			 cv::Size(DepthImageWidth,DepthImageHeight));
 
@@ -285,22 +297,26 @@ bool KinectCapture::CaptureColorFrame(IMultiSourceFrame *sf, int frame_count)
 			{
 				if(frame_count==0)
 				{
-					if(m_color_video_writer->isOpened())
-					{
-						m_color_video_writer->release();
-					}
+					m_db_item.start = QDateTime::currentDateTime().toString(m_tm_fmt);
+					m_db_item.type = "Color";
+					m_db_item.file_path = "Color_"+m_db_item.start+".m4v";
+					m_db_item.dir = m_save_dir.path();
 
-					QString path = m_save_dir.absoluteFilePath("Color_"+QDateTime::currentDateTime().toString(m_tm_fmt)+".avi");
-					m_color_video_writer->open(path.toStdString().c_str(),-1,8.0,
-																		 cv::Size(ColorImageWidth,ColorImageHeight));
-																		 //cv::Size(704,576));
+					QString path = m_save_dir.absoluteFilePath(m_db_item.file_path);
 
-					//_cvw->write(_color_image);
+					//m_encoder.createFile(path,640,360,1000000,40,8);
+
+
+					m_color_video_writer->open(path.toStdString().c_str(),CV_FOURCC('m','p','4','v'),8.0, cv::Size(640,360));
+
+																	 //cv::Size(704,576));
 				}
 
-
-				m_color_video_writer->write(m_color_mat);
-
+				cv::Mat scaled_image, bgr;
+				cv::resize(m_color_mat,scaled_image,cv::Size(640,360),0,0,CV_INTER_NN);
+				cv::cvtColor(scaled_image,bgr,CV_BGRA2BGR);
+				m_color_video_writer->write(bgr);
+				//m_encoder.encodeImage(scaled_image.ptr<unsigned char>(), scaled_image.step1());
 			}
 
 			cfr->Release();

@@ -6,6 +6,8 @@
 #include <opencv2/opencv.hpp>
 #include <QScopedPointer>
 #include <QDir>
+//#include "QVideoEncoder.h"
+#include "dbitem.h"
 
 
 class KinectCapture
@@ -48,6 +50,39 @@ public:
 
 		void SetSaveDirectory(const char* path);
 
+		void SetFrameCount(int num_count)
+		{
+			m_max_frame_count = num_count;
+		}
+
+		const char* DirPath()
+		{
+			return m_save_dir.dirName().toStdString().c_str();
+		}
+
+		const char* FilePath(quint8 file_type)
+		{
+			switch(file_type)
+			{
+			case 0:
+				return m_clr_file_path.toStdString().c_str();
+			case 1:
+				return m_dep_file_path.toStdString().c_str();
+			default:
+				return NULL;
+			}
+		}
+
+		int CurrentFrameCount() const
+		{
+			return m_frame_count;
+		}
+
+		DBItem* GetDBItem()
+		{
+			return &m_db_item;
+		}
+
 
 //    void WriteVideo();
 
@@ -82,6 +117,7 @@ private:
 //    Mat RGBMat(height, width, CV_8UC4);
     cv::Mat m_color_mat;
     cv::Mat m_depth_mat;
+
     QScopedPointer<cv::VideoWriter> m_color_video_writer;
     QScopedPointer<cv::VideoWriter> m_depth_video_writer;
 
@@ -89,12 +125,21 @@ private:
 //    QString m_save_dir;
     QDir m_save_dir;
 
-    int m_frame_count;
+		int m_frame_count; //current frame count
+
+		int m_max_frame_count;
 
     int _color_image_size;
 
-		QByteArray m_save_path;
-		QByteArray m_image_data;
+		QString m_clr_file_path;	//color file path
+		QString m_dep_file_path; //depth file path
+//		QByteArray m_image_data;
+
+
+
+		//QVideoEncoder m_encoder;
+
+		DBItem m_db_item;
 
 
 

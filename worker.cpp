@@ -2,7 +2,7 @@
 #include <zmq.h>
 #include "kinectcapture.h"
 #include <QDebug>
-
+#include <QByteArray>
 
 
 Worker::~Worker()
@@ -43,8 +43,14 @@ void Worker::run()
 
                     if(_kc->ProcessArrivedFrame(args))
                     {
+											qDebug()<<"Frame Count:"<<_kc->CurrentFrameCount();
 											//Send file name to database thread
-												//zmq_send(pusher,"OK",2,0);
+											if(_kc->CurrentFrameCount()==0)
+											{
+												DBItem* db_item = _kc->GetDBItem();
+												db_item->ComposeRow();
+												zmq_send(pusher,db_item->row,db_item->row.size(),0);
+											}
                     }
                 }
 

@@ -2,34 +2,36 @@
 #define WRITER_H
 
 #include <QRunnable>
+#include <QSqlDatabase>
 
 class KinectCapture;
 
-class WriterBase : public QRunnable
+class DBThread : public QRunnable
 {
 public:
-    explicit WriterBase(KinectCapture* kc, void* ctx);
-    ~WriterBase();
+	explicit DBThread(KinectCapture* kc, void* ctx);
+	~DBThread();
 
-    //void InitializeMessageQueue();
-    //bool IsStopped();
-    //void ReleaseMessageQueue();
+	//void InitializeMessageQueue();
+	//bool IsStopped();
+	//void ReleaseMessageQueue();
 
-protected:
-    void run();
+	protected:
+		void run();
+
+	bool SetDB(const QString &hostname, const QString &dbname, const QString &user, const QString &pwd);
 
 private:
-    KinectCapture *_kc;
+	KinectCapture *_kc;
 
-    void* _ctx;
-    //void* _sock;
+	void* _ctx;
 
-//    char _buf[8];
+	QSqlDatabase m_db;
+	//void* _sock;
 
-    enum MaxFrameNumber
-    {
-        FrameCount = 900
-    };
+	//    char _buf[8];
+
+
 };
 
 #endif // WRITER_H
