@@ -6,6 +6,7 @@
 #include <opencv2/opencv.hpp>
 #include <QScopedPointer>
 #include <QDir>
+
 //#include "QVideoEncoder.h"
 #include "dbitem.h"
 
@@ -22,7 +23,7 @@ public:
 
     IMultiSourceFrameReader* const Reader()
     {
-        return _frame_reader;
+				return m_pFrameReader;
     }
 
     IColorFrameReader* const ColorReader()
@@ -42,11 +43,8 @@ public:
 
     bool ProcessArrivedFrame(IMultiSourceFrameArrivedEventArgs *args);
 
-		void ProcessDepthFrame(UINT16 *pBuffer, USHORT nMinDepth, USHORT nMaxDepth);
 
-		void CaptureDepthFrame(IMultiSourceFrame* sf, int frame_count);
 
-		bool CaptureColorFrame(IMultiSourceFrame* sf, int frame_count);
 
 		void SetSaveDirectory(const char* path);
 
@@ -83,6 +81,21 @@ public:
 			return &m_db_item;
 		}
 
+		void Release();
+
+protected:
+		bool ProcessDepthFrame(IDepthFrame* pDepthFrame);
+
+		bool ProcessColorFrame(IColorFrame* pColorFrame);
+
+		void ProcessDepthFrame(UINT16 *pBuffer, USHORT nMinDepth, USHORT nMaxDepth);
+
+//		void CaptureDepthFrame(IMultiSourceFrame* sf, int frame_count);
+
+//		bool CaptureColorFrame(IMultiSourceFrame* sf, int frame_count);
+
+		bool SaveAcquiredFrames(IColorFrame* cf, IDepthFrame* df);
+
 
 //    void WriteVideo();
 
@@ -94,13 +107,15 @@ public:
 private:
 
 
-    IKinectSensor *_iks; //kinect sensor object
+		IKinectSensor *m_pKinectSensor; //kinect sensor object
 //    std::unique_ptr<IMultiSourceFrameReader> _frame_reader;
-    IMultiSourceFrameReader *_frame_reader;
+		IMultiSourceFrameReader *m_pFrameReader;
 
     IColorFrameReader* _icolor;
     IDepthFrameReader* _idepth;
     IBodyFrameReader* _ibody;
+
+		ICoordinateMapper*	m_pCoordinateMapper;
 
     enum Dimension
     {
@@ -117,6 +132,11 @@ private:
 //    Mat RGBMat(height, width, CV_8UC4);
     cv::Mat m_color_mat;
     cv::Mat m_depth_mat;
+		cv::Mat m_scaled_mat;
+		cv::Mat m_bgr_mat;
+
+		ColorSpacePoint* m_pColorSpacePoints;
+
 
     QScopedPointer<cv::VideoWriter> m_color_video_writer;
     QScopedPointer<cv::VideoWriter> m_depth_video_writer;

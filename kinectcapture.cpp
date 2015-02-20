@@ -2,11 +2,11 @@
 #include <QDebug>
 #include <QDateTime>
 
-#define FRAMECOUNT 300
+#define FRAMECOUNT 30
 
 KinectCapture::KinectCapture()
-	:_iks(nullptr)
-	,_frame_reader(nullptr)
+	:m_pKinectSensor(NULL)
+	,m_pFrameReader(NULL)
 	,m_color_mat(KinectCapture::ColorImageHeight,KinectCapture::ColorImageWidth,CV_8UC4)
 	,m_depth_mat(KinectCapture::DepthImageHeight,KinectCapture::DepthImageWidth,CV_8UC3)
 	//,_color_image_size(KinectCapture::Width*KinectCapture::Height*KinectCapture::Depth)
@@ -16,51 +16,23 @@ KinectCapture::KinectCapture()
 	,m_depth_video_writer(new cv::VideoWriter)
 	,m_frame_count(0)
 	,m_max_frame_count(FRAMECOUNT)
+	,m_pColorSpacePoints(NULL)
 {
 	//qDebug()<<"Color Image Size="<<ColorImageSize;
 }
+
 
 KinectCapture::~KinectCapture()
 {
 	qDebug()<<"release";
 
-	if(_evt_frame_ready!=NULL)
-	{
-		_frame_reader->UnsubscribeMultiSourceFrameArrived(_evt_frame_ready);
-		_frame_reader->Release();
-	}
-
-	//    qDebug()<<"release 2";
-	//    if(_frame_reader!=nullptr)
-	//    {
-	//        _frame_reader->Release();
-	//    }
-
-	//    qDebug()<<"release 3";
-	if(_iks!=nullptr)
-	{
-		_iks->Close();
-		_iks->Release();
-	}
-
-	//m_color_video_writer->release();
-
-
-	//    if(_iks!=nullptr)
-	//    {
-	////        _iks->Close();
-	////        _frame_reader->Release();
-	//        _iks->Release();
-	//    }
-
-	//    qDebug()<<"release 4";
 }
 
 //Initialize Kinect Sensor
 bool KinectCapture::Initialize()
 {
 	//    IKinectSensor *sensor = nullptr;
-	if(FAILED(GetDefaultKinectSensor(&_iks)))
+	if(FAILED(GetDefaultKinectSensor(&m_pKinectSensor)))
 	{
 		qDebug()<<"Fatal Error: Canno Find Default Kinect Sensor";
 		return false;
@@ -69,120 +41,176 @@ bool KinectCapture::Initialize()
 	//    _iks.reset(sensor);
 
 
-	if(FAILED(_iks->Open()))
+	if(FAILED(m_pKinectSensor->Open()))
 	{
 		qDebug()<<"Fatal Error: Cannot Open Kinect Sensor";
 		return false;
 	}
 
-	if(m_color_video_writer->isOpened())
+	//To Initialize FFMPEG library
+	m_color_video_writer->open("test1.m4v",CV_FOURCC('m','p','4','v'),8.0, cv::Size(640,360));
+	m_depth_video_writer->open("test2.m4v",CV_FOURCC('m','p','4','v'),8.0, cv::Size(640,360));
+	m_color_video_writer->release();
+	m_depth_video_writer->release();
+
+	DWORD frame_type = FrameSourceTypes::FrameSourceTypes_Depth |  FrameSourceTypes::FrameSourceTypes_Color;
+	HRESULT hr = m_pKinectSensor->get_CoordinateMapper(&m_pCoordinateMapper);
+
+	m_pColorSpacePoints	= new ColorSpacePoint[DepthImageWidth * DepthImageHeight];
+
+	if (SUCCEEDED(hr))
 	{
-		m_color_video_writer->release();
+		if(FAILED(m_pKinectSensor->OpenMultiSourceFrameReader(frame_type,&m_pFrameReader)))
+		{
+			qDebug()<<"Fatal Error: Cannot Open Frame Reader";
+			return false;
+		}
+
+		m_pFrameReader->SubscribeMultiSourceFrameArrived(&_evt_frame_ready);
+
+		return true;
 	}
 
-	if(m_depth_video_writer->isOpened())
-	{
-		m_depth_video_writer->release();
-	}
-
-	//m_encoder.close();
-
-	//    IColorFrameSource *pColorSource = NULL;
-
-	//    if(FAILED(_iks->get_ColorFrameSource(&pColorSource)))
-	//    {
-	//        return false;
-	//    }
-
-	//    if(FAILED(pColorSource->OpenReader(&_icolor)))
-	//    {
-	//        return false;
-	//    }
-
-	//    IDepthFrameSource *pDepthSource = NULL;
-
-	//    if(FAILED(_iks->get_DepthFrameSource(&pDepthSource)))
-	//    {
-	//        return false;
-	//    }
-
-	//    if(FAILED(pDepthSource->OpenReader(&_idepth)))
-	//    {
-	//        return false;
-	//    }
-
-	//    IBodyFrameSource *pBodySource = NULL;
-	//    if(FAILED(_iks->get_BodyFrameSource(&pBodySource)))
-	//    {
-	//        return false;
-	//    }
-
-	//    if(FAILED(pBodySource->OpenReader(&_ibody)))
-	//    {
-	//        return false;
-	//    }
-
-
-
-	DWORD frame_type = FrameSourceTypes::FrameSourceTypes_Depth |  FrameSourceTypes::FrameSourceTypes_Color |
-			FrameSourceTypes::FrameSourceTypes_Body;
-
-	//    IMultiSourceFrameReader *reader = nullptr;
-
-	if(FAILED(_iks->OpenMultiSourceFrameReader(frame_type,&_frame_reader)))
-	{
-		qDebug()<<"Fatal Error: Cannot Open Frame Reader";
-		return false;
-	}
-
-
-	//    _frame_reader.reset(reader);
-
-	_frame_reader->SubscribeMultiSourceFrameArrived(&_evt_frame_ready);
-
-	return true;
+	return false;
 }
+
+//bool KinectCapture::ProcessArrivedFrame(IMultiSourceFrameArrivedEventArgs *args)
+//{
+//	//    qDebug()<<"Process Arrived Frame Data";
+
+//	IMultiSourceFrameReference *fr = NULL;
+
+//	bool result = false;
+
+//	if(SUCCEEDED(args->get_FrameReference(&fr)))
+//	{
+//		IMultiSourceFrame *sf = NULL;
+//		if(fr && SUCCEEDED(fr->AcquireFrame(&sf)))
+//		{
+//			//CaptureColorFrame(sf);
+//			if(m_frame_count==0)
+//			{
+//				m_db_item.start = QDateTime::currentDateTime().toString(m_tm_fmt);
+//				m_db_item.dir = m_save_dir.path();
+//				m_db_item.colorFileName = "Color_"+m_db_item.start+".m4v";
+//				QString path = m_save_dir.absoluteFilePath(m_db_item.colorFileName);
+//				m_color_video_writer->open(path.toStdString().c_str(),CV_FOURCC('m','p','4','v'),8.0, cv::Size(640,360));
+//				m_db_item.depthFileName = "Depth_"+m_db_item.start+".m4v";
+//				path = m_save_dir.absoluteFilePath(m_db_item.depthFileName);
+//				m_depth_video_writer->open(path.toStdString().c_str(),CV_FOURCC('m','p','4','v'),8.0,
+//																	 cv::Size(DepthImageWidth,DepthImageHeight));
+//			}
+
+//			CaptureColorFrame(sf,m_frame_count);
+//			CaptureDepthFrame(sf,m_frame_count);
+//			++m_frame_count;
+//			//qDebug()<<"Count="<<m_frame_count;
+
+//			if(m_frame_count==m_max_frame_count)
+//			{
+//				m_db_item.end = QDateTime::currentDateTime().toString(m_tm_fmt);
+//				m_frame_count = 0;
+//				//m_encoder.close();
+
+//				if(m_depth_video_writer->isOpened())
+//				{
+//					m_depth_video_writer->release();
+//				}
+
+//				if(m_color_video_writer->isOpened())
+//				{
+//					m_color_video_writer->release();
+//				}
+//			}
+//			sf->Release();
+//			result = true;
+//		}
+
+//		fr->Release();
+//	}
+
+//	return result;
+
+//}
 
 bool KinectCapture::ProcessArrivedFrame(IMultiSourceFrameArrivedEventArgs *args)
 {
 	//    qDebug()<<"Process Arrived Frame Data";
 
-	IMultiSourceFrameReference *fr = nullptr;
-
+	IMultiSourceFrameReference *pMultiSourceFrameReference = NULL;
+	IMultiSourceFrame *pMultiSourceFrame = NULL;
 	bool result = false;
 
-	if(SUCCEEDED(args->get_FrameReference(&fr)))
+	IColorFrame *pColorFrame = NULL;
+	IDepthFrame *pDepthFrame = NULL;
+
+	if(SUCCEEDED(args->get_FrameReference(&pMultiSourceFrameReference)))
 	{
-		IMultiSourceFrame *sf = nullptr;
-		if(SUCCEEDED(fr->AcquireFrame(&sf)))
+
+		if(SUCCEEDED(pMultiSourceFrameReference->AcquireFrame(&pMultiSourceFrame)))
 		{
-			//CaptureColorFrame(sf);
-			CaptureDepthFrame(sf,m_frame_count);
-			CaptureColorFrame(sf,m_frame_count);
-			++m_frame_count;
-			//qDebug()<<"Count="<<m_frame_count;
 
-			if(m_frame_count==m_max_frame_count)
+			//Capture Depth Frame
+			IDepthFrameReference* pDepthFrameReference = NULL;
+			HRESULT hr = pMultiSourceFrame->get_DepthFrameReference(&pDepthFrameReference);
+			if (SUCCEEDED(hr))
 			{
-				m_db_item.end = QDateTime::currentDateTime().toString(m_tm_fmt);
-				m_frame_count = 0;
-				//m_encoder.close();
+				hr = pDepthFrameReference->AcquireFrame(&pDepthFrame);
 
-				if(m_depth_video_writer->isOpened())
+				if(pDepthFrameReference!=NULL)
 				{
-					m_depth_video_writer->release();
-				}
-
-				if(m_color_video_writer->isOpened())
-				{
-					m_color_video_writer->release();
+					pDepthFrameReference->Release();
+					pDepthFrameReference = NULL;
 				}
 			}
-			sf->Release();
-			result = true;
-		}
 
-		fr->Release();
+			//capture color frame
+
+			if(SUCCEEDED(hr))
+			{
+				IColorFrameReference* pColorFrameReference = NULL;
+				hr = pMultiSourceFrame->get_ColorFrameReference(&pColorFrameReference);
+				if(SUCCEEDED(hr))
+				{
+					hr = pColorFrameReference->AcquireFrame(&pColorFrame);
+				}
+				if(pColorFrameReference!=NULL)
+				{
+					pColorFrameReference->Release();
+					pColorFrameReference = NULL;
+				}
+			}
+
+			if(SUCCEEDED(hr))
+			{
+				result = this->SaveAcquiredFrames(pColorFrame,pDepthFrame);
+			}
+
+		}
+	}
+
+	if(pColorFrame!=NULL)
+	{
+		pColorFrame->Release();
+		pColorFrame = NULL;
+	}
+
+	if(pDepthFrame!=NULL)
+	{
+		pDepthFrame->Release();
+		pDepthFrame = NULL;
+	}
+
+	if(pMultiSourceFrame!=NULL)
+	{
+		pMultiSourceFrame->Release();
+		pMultiSourceFrame = NULL;
+	}
+
+	if(pMultiSourceFrameReference!=NULL)
+	{
+		pMultiSourceFrameReference->Release();
+		pMultiSourceFrameReference = NULL;
 	}
 
 	return result;
@@ -191,7 +219,7 @@ bool KinectCapture::ProcessArrivedFrame(IMultiSourceFrameArrivedEventArgs *args)
 
 void KinectCapture::ProcessDepthFrame(UINT16 *pBuffer, USHORT nMinDepth, USHORT nMaxDepth)
 {
-	if (pBuffer)
+	if (pBuffer!=NULL)
 	{
 		//        RGBQUAD* pRGBX = m_pDepthRGBX;
 
@@ -215,13 +243,13 @@ void KinectCapture::ProcessDepthFrame(UINT16 *pBuffer, USHORT nMinDepth, USHORT 
 
 			// Note: Using conditionals in this loop could degrade performance.
 			// Consider using a lookup table instead when writing production code.
-			BYTE intensity = static_cast<BYTE>((depth >= nMinDepth) && (depth <= nMaxDepth) ? (depth % 256) : 0);
+			//depth = (depth-nMinDepth)/(nMaxDepth - nMinDepth)*256;
+			BYTE intensity = 0;
+			if(depth<nMaxDepth && depth>nMinDepth)
+			{
+				intensity = (BYTE)((double)(depth-nMinDepth)/(double)(nMaxDepth-nMinDepth)*256.0);
+			}
 
-
-			//m_depth_mat[idx] = intensity;
-			//m_depth_mat[idx][0] = intensity;
-			//m_depth_mat[idx][1] = intensity;
-			//m_depth_mat[idx][2] = intensity;
 			mat_data[idx*3] = intensity;
 			mat_data[idx*3+1] = intensity;
 			mat_data[idx*3+2] = intensity;
@@ -229,113 +257,282 @@ void KinectCapture::ProcessDepthFrame(UINT16 *pBuffer, USHORT nMinDepth, USHORT 
 			++idx;
 		}
 
-		//cv::imwrite("e:\\projects\\test.png",m_depth_mat);
-
 	}
 }
 
-void KinectCapture::CaptureDepthFrame(IMultiSourceFrame *sf, int frame_count)
+//void KinectCapture::CaptureDepthFrame(IMultiSourceFrame *sf, int frame_count)
+//{
+//	if(sf==NULL)
+//	{
+//		//		qDebug()<<"SF is NULL";
+//		return;
+//	}
+
+//	IDepthFrameReference *idfr = NULL;
+
+//	if(SUCCEEDED(sf->get_DepthFrameReference(&idfr)))
+//	{
+//		IDepthFrame* idf = NULL;
+
+//		if(SUCCEEDED(idfr->AcquireFrame(&idf)))
+//		{
+//			USHORT min_dist;
+//			USHORT max_dist;
+
+//			if(SUCCEEDED(idf->get_DepthMinReliableDistance(&min_dist))
+//				 &&SUCCEEDED(idf->get_DepthMaxReliableDistance(&max_dist)))
+//			{
+//				UINT buffer_size = 0;
+//				UINT16 *ptr_buffer = NULL;
+
+//				if(SUCCEEDED(idf->AccessUnderlyingBuffer(&buffer_size,&ptr_buffer)))
+//				{
+//					ProcessDepthFrame(ptr_buffer,min_dist,max_dist);
+
+//					//					if(frame_count==0)
+//					//					{
+
+//					////						m_db_item.depthFileName = "Depth_"+m_db_item.start+".m4v";
+//					////						QString path = m_save_dir.absoluteFilePath(m_db_item.depthFileName);
+//					//						qDebug()<<"Start recording "+m_db_item.depthFileName;
+//					////						m_depth_video_writer->open(path.toStdString().c_str(),
+//					////																			 CV_FOURCC('m','p','4','v')
+//					////																			 ,8.0,
+//					////																			 //cv::Size(704,576));
+//					////																			 cv::Size(DepthImageWidth,DepthImageHeight));
+
+//					//						//_cvw->write(_color_image);
+//					//					}
+
+
+//					//					m_depth_video_writer->write(m_depth_mat);
+//				}
+
+//				if(idfr!=NULL)
+//				{
+//					idfr->Release();
+//					idfr = NULL;
+//				}
+//			}
+
+//			if(idf!=NULL)
+//			{
+//				idf->Release();
+//				idf = NULL;
+//			}
+
+//		}
+//	}
+//}
+
+//bool KinectCapture::CaptureColorFrame(IMultiSourceFrame *sf, int frame_count)
+//{
+//	if(sf==NULL)
+//	{
+//		return false;
+//	}
+
+//	bool ok = false;
+
+//	IColorFrameReference *cfr = NULL;
+
+
+//	if(SUCCEEDED(sf->get_ColorFrameReference(&cfr)))
+//	{
+//		IColorFrame* cf = NULL;
+//		if(cfr && SUCCEEDED(cfr->AcquireFrame(&cf)))
+//		{
+//			HRESULT hr = cf->CopyConvertedFrameDataToArray(ColorImageSize,m_color_mat.data,ColorImageFormat_Bgra);
+//			if(SUCCEEDED(hr))
+//			{
+//				ok = true;
+//				//				if(frame_count==0)
+//				//				{
+//				////					m_db_item.start = QDateTime::currentDateTime().toString(m_tm_fmt);
+//				////					m_db_item.type = "Color";
+//				////					m_db_item.colorFileName = "Color_"+m_db_item.start+".m4v";
+//				//////					m_db_item.dir = m_save_dir.path();
+
+//				////					QString path = m_save_dir.absoluteFilePath(m_db_item.colorFileName);
+//				//					qDebug()<<"Start recording "+m_db_item.colorFileName;
+
+//				////					//m_encoder.createFile(path,640,360,1000000,40,8);
+
+
+//				////					m_color_video_writer->open(path.toStdString().c_str(),CV_FOURCC('m','p','4','v'),8.0, cv::Size(640,360));
+
+//				//																	 //cv::Size(704,576));
+//				//				}
+
+//				cv::Mat scaled_image, bgr;
+//				cv::resize(m_color_mat,scaled_image,cv::Size(640,360),0,0,CV_INTER_NN);
+//				cv::cvtColor(scaled_image,bgr,CV_BGRA2BGR);
+//				m_color_video_writer->write(bgr);
+//				//m_encoder.encodeImage(scaled_image.ptr<unsigned char>(), scaled_image.step1());
+//			}
+
+//			if(cfr!=NULL)
+//			{
+//				cfr->Release();
+//				cfr = NULL;
+//			}
+//		}
+
+//		if(cf!=NULL)
+//		{
+//			cf->Release();
+//			cf = NULL;
+//		}
+//	}
+
+
+//	return ok;
+//}
+
+bool KinectCapture::SaveAcquiredFrames(IColorFrame *cf, IDepthFrame *df)
 {
-	IDepthFrameReference *idfr = nullptr;
+	bool ok = false;
 
-	if(SUCCEEDED(sf->get_DepthFrameReference(&idfr)))
+	if(cf!=NULL && df!=NULL)
 	{
-		IDepthFrame* idf = nullptr;
 
-		if(SUCCEEDED(idfr->AcquireFrame(&idf)))
+		//write depth
+		if(ProcessColorFrame(cf)&&ProcessDepthFrame(df))
 		{
-			USHORT min_dist;
-			USHORT max_dist;
-
-			if(SUCCEEDED(idf->get_DepthMinReliableDistance(&min_dist))
-				 &&SUCCEEDED(idf->get_DepthMaxReliableDistance(&max_dist)))
+			if(m_frame_count == 0)
 			{
-				UINT buffer_size = 0;
-				UINT16 *ptr_buffer;
-
-				if(SUCCEEDED(idf->AccessUnderlyingBuffer(&buffer_size,&ptr_buffer)))
-				{
-					ProcessDepthFrame(ptr_buffer,min_dist,max_dist);
-
-					if(frame_count==0)
-					{
-
-						QString path = m_save_dir.absoluteFilePath("Depth_"+QDateTime::currentDateTime().toString(m_tm_fmt)+".m4v");
-						m_depth_video_writer->open(path.toStdString().c_str(),
-																			 CV_FOURCC('m','p','4','v')
-																			 ,8.0,
-																			 //cv::Size(704,576));
-																			 cv::Size(DepthImageWidth,DepthImageHeight));
-
-						//_cvw->write(_color_image);
-					}
-
-
-					m_depth_video_writer->write(m_depth_mat);
-				}
-
-				idfr->Release();
-
+				//open file to write video
+				m_db_item.start = QDateTime::currentDateTime().toString(m_tm_fmt);
+				m_db_item.dir = m_save_dir.path();
+				m_db_item.colorFileName = "Color_"+m_db_item.start+".m4v";
+				qDebug()<<"Start Recording "<<m_db_item.colorFileName;
+				QString path = m_save_dir.absoluteFilePath(m_db_item.colorFileName);
+				m_color_video_writer->open(path.toStdString().c_str(),CV_FOURCC('m','p','4','v'),8.0, cv::Size(640,360));
+				m_db_item.depthFileName = "Depth_"+m_db_item.start+".m4v";
+				path = m_save_dir.absoluteFilePath(m_db_item.depthFileName);
+				qDebug()<<"Start Recording "<<m_db_item.depthFileName;
+				m_depth_video_writer->open(path.toStdString().c_str(),CV_FOURCC('m','p','4','v'),8.0,cv::Size(DepthImageWidth,DepthImageHeight));
 			}
 
-			idf->Release();
+			m_depth_video_writer->write(m_depth_mat);
+			m_color_video_writer->write(m_bgr_mat);
+			++m_frame_count;
+			if(m_frame_count%100==0)
+			{
+				qDebug()<<"Frame Count:"<<m_frame_count;
+			}
+
+			ok = true;
+		}
+
+		if(m_frame_count==m_max_frame_count)
+		{
+			m_db_item.end = QDateTime::currentDateTime().toString(m_tm_fmt);
+			m_frame_count = 0;
+			//m_encoder.close();
+
+			if(m_depth_video_writer->isOpened())
+			{
+				m_depth_video_writer->release();
+			}
+
+			if(m_color_video_writer->isOpened())
+			{
+				m_color_video_writer->release();
+			}
 		}
 	}
+
+	return ok;
 }
 
-bool KinectCapture::CaptureColorFrame(IMultiSourceFrame *sf, int frame_count)
+bool KinectCapture::ProcessDepthFrame(IDepthFrame *pDepthFrame)
 {
-	IColorFrameReference *cfr = nullptr;
+	UINT16*	depthBuffer = NULL;
 
-	if(SUCCEEDED(sf->get_ColorFrameReference(&cfr)))
+	UINT depthBufferSize = 0;
+
+	USHORT maxReliableDistance = 0;
+	USHORT minReliableDistance = 0;
+
+	int depthWidth = 0; int depthHeight = 0;
+
+	IFrameDescription* pDepthFrameDescription = NULL;
+
+	HRESULT hr = pDepthFrame->get_FrameDescription(&pDepthFrameDescription);
+
+	if (SUCCEEDED(hr))
 	{
-		IColorFrame* cf = nullptr;
-		if(SUCCEEDED(cfr->AcquireFrame(&cf)))
+		hr = pDepthFrameDescription->get_Width(&depthWidth);
+	}
+	if (SUCCEEDED(hr))
+	{
+		hr = pDepthFrameDescription->get_Height(&depthHeight);
+	}
+	if (SUCCEEDED(hr))
+	{
+		hr = pDepthFrame->get_DepthMaxReliableDistance(&maxReliableDistance);
+	}
+	if (SUCCEEDED(hr))
+	{
+		hr = pDepthFrame->get_DepthMinReliableDistance(&minReliableDistance);
+	}
+	if (SUCCEEDED(hr))
+	{
+		hr = pDepthFrame->AccessUnderlyingBuffer(&depthBufferSize, &depthBuffer);
+	}
+
+	if (!SUCCEEDED(hr))
+	{
+		return false;
+	}
+
+	if(depthWidth == DepthImageWidth && depthHeight == DepthImageHeight)
+	{
+		ProcessDepthFrame(depthBuffer,minReliableDistance,maxReliableDistance);
+		return true;
+	}
+
+	return false;
+}
+
+bool KinectCapture::ProcessColorFrame(IColorFrame *pColorFrame)
+{
+	IFrameDescription* pColorFrameDescription = NULL;
+	HRESULT hr = pColorFrame->get_FrameDescription(&pColorFrameDescription);
+
+	int colorWidth = 0, colorHeight = 0;
+	if (SUCCEEDED(hr))
+	{
+		hr = pColorFrameDescription->get_Width(&colorWidth);
+	}
+	if (SUCCEEDED(hr))
+	{
+		hr = pColorFrameDescription->get_Height(&colorHeight);
+	}
+
+	if(pColorFrameDescription!=NULL)
+	{
+		pColorFrameDescription->Release();
+		pColorFrameDescription = NULL;
+	}
+
+	if (SUCCEEDED(hr))
+	{
+
+		if(colorWidth==ColorImageWidth && colorHeight == ColorImageHeight)
 		{
-			HRESULT hr = cf->CopyConvertedFrameDataToArray(ColorImageSize,m_color_mat.data,ColorImageFormat_Bgra);
+			hr = pColorFrame->CopyConvertedFrameDataToArray(ColorImageSize,m_color_mat.data,ColorImageFormat_Bgra);
 			if(SUCCEEDED(hr))
 			{
-				if(frame_count==0)
-				{
-					m_db_item.start = QDateTime::currentDateTime().toString(m_tm_fmt);
-					m_db_item.type = "Color";
-					m_db_item.file_path = "Color_"+m_db_item.start+".m4v";
-					m_db_item.dir = m_save_dir.path();
-
-					QString path = m_save_dir.absoluteFilePath(m_db_item.file_path);
-
-					//m_encoder.createFile(path,640,360,1000000,40,8);
-
-
-					m_color_video_writer->open(path.toStdString().c_str(),CV_FOURCC('m','p','4','v'),8.0, cv::Size(640,360));
-
-																	 //cv::Size(704,576));
-				}
-
-				cv::Mat scaled_image, bgr;
-				cv::resize(m_color_mat,scaled_image,cv::Size(640,360),0,0,CV_INTER_NN);
-				cv::cvtColor(scaled_image,bgr,CV_BGRA2BGR);
-				m_color_video_writer->write(bgr);
-				//m_encoder.encodeImage(scaled_image.ptr<unsigned char>(), scaled_image.step1());
+				cv::resize(m_color_mat,m_scaled_mat,cv::Size(640,360),0,0,CV_INTER_NN);
+				cv::cvtColor(m_scaled_mat,m_bgr_mat,CV_BGRA2BGR);
+				return true;
 			}
-
-			cfr->Release();
 		}
-
-		cf->Release();
 	}
 
-
-	return true;
-
-
-
-
-	//return hr==S_OK;
-
-
-
-
+	return false;
 }
 
 void KinectCapture::SetSaveDirectory(const char *path)
@@ -347,6 +544,40 @@ void KinectCapture::SetSaveDirectory(const char *path)
 	{
 		m_save_dir.mkdir(savePath);
 	}
+}
+
+void KinectCapture::Release()
+{
+	if(_evt_frame_ready!=NULL)
+	{
+		m_pFrameReader->UnsubscribeMultiSourceFrameArrived(_evt_frame_ready);
+		m_pFrameReader->Release();
+	}
+
+	if(m_pCoordinateMapper!=NULL)
+	{
+		m_pCoordinateMapper->Release();
+		m_pCoordinateMapper = NULL;
+	}
+	if(m_pKinectSensor!=NULL)
+	{
+		m_pKinectSensor->Close();
+		m_pKinectSensor->Release();
+		m_pKinectSensor = NULL;
+	}
+
+	if(m_color_video_writer->isOpened())
+	{
+		m_color_video_writer->release();
+	}
+
+	if(m_depth_video_writer->isOpened())
+	{
+		m_depth_video_writer->release();
+	}
+
+	delete[] m_pColorSpacePoints;
+
 }
 
 //void KinectCapture::WriteVideo()

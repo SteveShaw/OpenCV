@@ -6,11 +6,11 @@
 
 struct DBItem
 {
-	QString file_path;
+	QString colorFileName;
+	QString depthFileName;
 	QString start;
 	QString end;
 	QString dir;
-	QString type;
 
 	QByteArray row;
 
@@ -20,13 +20,31 @@ struct DBItem
 		row += ";";
 		row += end;
 		row += ";";
-		row += file_path;
-		row += ";";
 		row += dir;
 		row += ";";
-		row += type;
+		row += colorFileName;
+		row += ";";
+		row += depthFileName;
 	}
 };
+
+struct DBConfig
+{
+	QString host;
+	QString user;
+	QString pwd;
+	QString db;	//database name
+	QString tbl;//table
+};
+
+struct FTPConfig
+{
+	QString host;
+	QString user;
+	QString pwd;
+	QString path;
+};
+
 
 
 #endif // DBITEM_H

@@ -5,20 +5,20 @@
 #include <QByteArray>
 
 
-Worker::~Worker()
+GrabWorker::~GrabWorker()
 {
 
 }
 
-void Worker::run()
+void GrabWorker::run()
 {
     void* rcv = zmq_socket(_ctx,ZMQ_SUB);
     zmq_setsockopt(rcv,ZMQ_SUBSCRIBE,0,0);
 
     zmq_connect(rcv,"inproc://stopper");
 
-    void* pusher = zmq_socket(_ctx,ZMQ_PUSH);
-    zmq_bind(pusher,"inproc://writer");
+		void* pusher = zmq_socket(_ctx,ZMQ_PUSH);
+		zmq_bind(pusher,"inproc://writer");
 
     char buf[8];
 
@@ -35,26 +35,31 @@ void Worker::run()
 
             if(_kc->Reader())
             {
-                IMultiSourceFrameArrivedEventArgs *args = nullptr;
+								IMultiSourceFrameArrivedEventArgs *args = NULL;
 
                 if(SUCCEEDED(_kc->Reader()->GetMultiSourceFrameArrivedEventData(_kc->_evt_frame_ready,&args)))
                 {
                     //qDebug()<<"Frame Arrived";
-
                     if(_kc->ProcessArrivedFrame(args))
                     {
-											qDebug()<<"Frame Count:"<<_kc->CurrentFrameCount();
 											//Send file name to database thread
 											if(_kc->CurrentFrameCount()==0)
 											{
 												DBItem* db_item = _kc->GetDBItem();
 												db_item->ComposeRow();
+												qDebug()<<"Complete record file "+db_item->colorFileName;
+												qDebug()<<"Complete record file "+db_item->depthFileName;
 												zmq_send(pusher,db_item->row,db_item->row.size(),0);
 											}
                     }
+
                 }
 
-                args->Release();
+								if(args!=NULL)
+								{
+									args->Release();
+									args = NULL;
+								}
             }
         }
     }
@@ -62,6 +67,6 @@ void Worker::run()
     qDebug()<<"End Thread";
 
     zmq_close(rcv);
-    zmq_close(pusher);
+		zmq_close(pusher);
 }
 
