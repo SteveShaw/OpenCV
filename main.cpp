@@ -9,12 +9,12 @@
 #include <QString>
 #include <QDate>
 #include "msgqueue.h"
-#include <ftpclient.h>
+//#include <ftpclient.h>
 //#include <QSqlDatabase>
 //#include <QSqlQuery>
 //#include "colorimagewriter.h"
 
-void LoadSettings(const char* path, DBConfig& db_cfg, FTPConfig &ftp_cfg)
+void LoadSettings(const char* path, DBConfig& db_cfg, FTPConfig &ftp_cfg, QString& savePath)
 {
 	QSettings app_cfg(QString(path),QSettings::IniFormat);
 
@@ -29,9 +29,11 @@ void LoadSettings(const char* path, DBConfig& db_cfg, FTPConfig &ftp_cfg)
 	ftp_cfg.user = app_cfg.value("FTP/user","user").toString();
 	ftp_cfg.pwd = app_cfg.value("FTP/password","password").toString();
 	ftp_cfg.path = app_cfg.value("FTP/path","/home/share").toString();
+
+	savePath = app_cfg.value("App/SavePath","d:\\video").toString();
 }
 
-void SaveSettings(const char* path, const DBConfig& db_cfg, FTPConfig &ftp_cfg)
+void SaveSettings(const char* path, const DBConfig& db_cfg, FTPConfig &ftp_cfg, QString& savePath)
 {
 	QSettings app_cfg(QString(path),QSettings::IniFormat);
 
@@ -45,6 +47,8 @@ void SaveSettings(const char* path, const DBConfig& db_cfg, FTPConfig &ftp_cfg)
 	app_cfg.setValue("FTP/user",ftp_cfg.user);
 	app_cfg.setValue("FTP/password",ftp_cfg.pwd);
 	app_cfg.setValue("FTP/path",ftp_cfg.path);
+
+	app_cfg.setValue("App/SavePath",savePath);
 }
 
 //bool TestDBConn(const DBConfig &db_cfg)
@@ -72,65 +76,7 @@ void SaveSettings(const char* path, const DBConfig& db_cfg, FTPConfig &ftp_cfg)
 //	return ok;
 //}
 
-bool TestFTPConn(FTPConfig& cfg)
-{
 
-	FTPClient *ftp = new FTPClient(cfg.host.toStdString().c_str(),
-																 cfg.user.toStdString().c_str(),
-																 cfg.pwd.toStdString().c_str());
-
-	ftp->LogIn();
-
-	bool is_conn = ftp->IsLogged();
-
-	if(is_conn)
-	{
-		qDebug()<<"Info: FTP is accessible";
-		std::list<std::string> fl;
-		QString pathName;
-		QString today = QDate::currentDate().toString("yyyy-MM-dd");
-
-		//create directory
-		bool found = false;
-
-		if(ftp->GetDirectoryList(cfg.path.toStdString().c_str(),fl))
-		{
-			std::list<std::string>::iterator iter = fl.begin();
-			while(iter!=fl.end())
-			{
-				pathName = (*iter).c_str();
-				if(pathName.contains(today))
-				{
-					cfg.path = pathName;
-					found = true;
-					break;
-				}
-				++iter;
-			}
-		}
-
-		if(!found)
-		{
-			//create directory with current date
-			QString path = cfg.path;
-			path.append("/");
-			path.append(today);
-			is_conn = ftp->MKDir(path.toStdString().c_str());
-			if(is_conn)
-			{
-				cfg.path = path;
-			}
-		}
-		ftp->Close();
-	}
-	else
-	{
-		qDebug()<<"Error: Cannot Access to FTP";
-	}
-
-	delete ftp;
-	return is_conn;
-}
 
 
 
@@ -142,23 +88,14 @@ int main(int argc, char *argv[])
 	const char* path = "KinectConfig.ini";
 	DBConfig db_cfg;
 	FTPConfig ftp_cfg;
-	LoadSettings(path,db_cfg,ftp_cfg);
+	QString saveDir;
+	LoadSettings(path,db_cfg,ftp_cfg,saveDir);
 
+	qDebug()<<saveDir;
 
-//	bool dbOK = TestDBConn(db_cfg);
-//	bool dbOK = true;
-	bool ftpOK = TestFTPConn(ftp_cfg);
+	//SaveSettings(path,db_cfg,ftp_cfg,saveDir);
 
-
-
-//	//SaveDBSettings(path,db_cfg);
-
-
-	if(!ftpOK)
-	{
-		return -1;
-	}
-
+	//return 0;
 
 	QScopedPointer<KinectCapture> kc(new KinectCapture);
 
@@ -170,6 +107,8 @@ int main(int argc, char *argv[])
 		//        QScopedPointer<Worker> sp_worker(new Worker(&kc,ctx));
 	}
 
+
+	kc->SetSaveDirectory(saveDir.toStdString().c_str());
 
 	if(argc>=2)
 	{

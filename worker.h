@@ -4,12 +4,16 @@
 
 #include <QObject>
 #include <QRunnable>
+#include <QProcess>
 
 class KinectCapture;
 
 class GrabWorker : public QObject, public QRunnable
 {
 	Q_OBJECT
+	Q_ENUMS(QProcess::ExitStatus)
+	Q_ENUMS(QProcess::ProcessError)
+
 public:
 		GrabWorker(QObject*parent, KinectCapture *kc, void* ctx)
 				:QObject(parent)

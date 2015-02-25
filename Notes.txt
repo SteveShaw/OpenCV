@@ -175,3 +175,69 @@ not
 
 						qFile.close();
 					}
+					
+//check directory exists workable code
+
+	QByteArray ftpUrl;
+	ftpUrl += m_FTPConfig.path;
+	if(!ftpUrl.endsWith("/"))ftpUrl+="/";
+	ftpUrl += nowDate;
+	
+	if(curl)
+	{
+		//check url exists
+
+		QByteArray url = remoteUrl;
+		url += ftpUrl;
+		qDebug()<<url;
+
+		curl_easy_setopt(curl, CURLOPT_USERPWD, up.data());
+		curl_easy_setopt(curl, CURLOPT_URL, url.data());
+		curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
+		res = curl_easy_perform(curl);
+
+		qDebug()<<"Exist:"<<res;
+
+		if(res != CURLE_OK)
+		{
+
+			QByteArray curl_cmd = "MKD ";
+			curl_cmd += ftpUrl;
+			qDebug()<<curl_cmd;
+			//			curl_cmd += m_FTPConfig.path;
+			//			curl_cmd += "/";
+			//			curl_cmd += QDateTime::currentDateTime().toString("yyyy-MM-dd");
+
+			headerlist = curl_slist_append(headerlist,curl_cmd.data());
+
+			curl_easy_setopt(curl, CURLOPT_USERPWD, up.data());
+			curl_easy_setopt(curl, CURLOPT_URL, remoteUrl.data());
+			/* enable verbose for easier tracing */
+			curl_easy_setopt(curl, CURLOPT_FTP_CREATE_MISSING_DIRS, 1L);
+			curl_easy_setopt(curl, CURLOPT_QUOTE, headerlist);
+
+			res = curl_easy_perform(curl);
+			//		/* Check for errors */
+			if(res != CURLE_OK)
+			{
+				emit TransformSignal(QString("curl_easy_perform() failed: %1\n").arg(curl_easy_strerror(res)));
+			}
+			else
+			{
+				emit TransformSignal(QString("Completed create directory %1").arg(curl_cmd.data()));
+			}
+
+			qDebug()<<res;
+
+			curl_slist_free_all (headerlist);
+			headerlist = NULL;
+		}
+
+		/* we want to use our own read function */
+		curl_easy_setopt(curl, CURLOPT_READFUNCTION, CurlHeper::read_callback);
+
+		/* enable uploading */
+		curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
+
+		curl_easy_setopt(curl, CURLOPT_FTP_CREATE_MISSING_DIRS, 1L);
+	}

@@ -6,6 +6,7 @@
 #include <opencv2/opencv.hpp>
 #include <QScopedPointer>
 #include <QDir>
+#include <QTime>
 
 //#include "QVideoEncoder.h"
 #include "dbitem.h"
@@ -53,9 +54,9 @@ public:
 			m_max_frame_count = num_count;
 		}
 
-		const char* DirPath()
+		QString DirPath()
 		{
-			return m_save_dir.dirName().toStdString().c_str();
+			return QString(m_save_dir.path());
 		}
 
 		const char* FilePath(quint8 file_type)
@@ -160,6 +161,8 @@ private:
 		//QVideoEncoder m_encoder;
 
 		DBItem m_db_item;
+
+		QTime m_Last; //to avoid record small video file in one minute
 
 
 

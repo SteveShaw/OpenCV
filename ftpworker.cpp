@@ -4,7 +4,7 @@
 #include <QByteArray>
 #include <QThread>
 #include <QtSql>
-#include <ftpclient.h>
+//#include <ftpclient.h>
 #include <QFile>
 #include <zmq.h>
 
@@ -30,21 +30,15 @@ void FTPWorker::run()
 	void* puller = zmq_socket(m_ctx,ZMQ_PULL);
 	zmq_connect(puller,"inproc://writer");
 
+	void* informer = zmq_socket(m_ctx,ZMQ_PUB);
+	zmq_bind(informer,"tcp://*:7777");
+
 	QByteArray data_buf(MAX_SIZE,0);
 
 	//cv::VideoWriter* cvw = nullptr;
 
 	zmq_pollitem_t items[] = {{puller,0,ZMQ_POLLIN,0}};
 
-	std::string ftp_host = m_ftp_cfg.host.toStdString();//"129.105.36.214";
-	std::string user = m_ftp_cfg.user.toStdString();//"jianshao";
-	std::string pwd = m_ftp_cfg.pwd.toStdString();//"111111";
-
-//	FTPClient *ftp = new FTPClient(ftp_host.c_str(),user.c_str(),pwd.c_str());
-
-	bool dbOK = InitDB();
-	bool colorOK = false;
-	bool depthOK = false;
 
 	while(true)
 	{
@@ -72,80 +66,17 @@ void FTPWorker::run()
 
 				if(item_list.size()==5)
 				{
-					qDebug()<<"Uploading to FTP";
-
-					qDebug()<<data_buf;
-
-					QByteArray local_path = item_list[2];
-					local_path.append("/");
-					local_path.append(item_list[3]);
-
-					QString remote_path = m_ftp_cfg.path;
-					remote_path.append("/");
-					remote_path.append(item_list[3]);
-
-
-					FTPClient ftp(ftp_host.c_str(),user.c_str(),pwd.c_str());
-					colorOK = false;
-					if(QFile::exists(local_path))
-					{
-						if(ftp.LogIn())
-						{
-							int upload_bytes = ftp.Upload(remote_path.toStdString().c_str(),local_path.data());
-							qDebug()<<upload_bytes<<" has uploaded to "<<remote_path;
-							ftp.Close();
-
-							colorOK = true;
-						}
-						else
-						{
-							qDebug()<<"FTP Error:"<<ftp.GetErrMsg();
-						}
-					}
-
-
-
-					local_path = item_list[2];
-					local_path.append("/");
-					local_path.append(item_list[4]);
-
-					QThread::msleep(300);
-					remote_path = m_ftp_cfg.path;
-					remote_path.append("/");
-					remote_path.append(item_list[4]);
-
-
-					depthOK = false;
-					if(QFile::exists(local_path))
-					{
-						if(ftp.LogIn())
-						{
-							int upload_bytes = ftp.Upload(remote_path.toStdString().c_str(),local_path.data());
-							qDebug()<<upload_bytes<<" has uploaded to "<<remote_path;
-							ftp.Close();
-							depthOK = true;
-						}
-						else
-						{
-							qDebug()<<"FTP Error:"<<ftp.GetErrMsg();
-						}
-					}
-
-
-					if(dbOK)
-					{
-						InsertRecord(item_list,colorOK,depthOK);
-					}
-
+					//inform outside program
+					zmq_send(informer, data_buf.data(), rv_len, ZMQ_DONTWAIT);
 				}
 			}
-
 
 		}
 	}
 
 	zmq_close(rcv);
 	zmq_close(puller);
+	zmq_close(informer);
 
 }
 
