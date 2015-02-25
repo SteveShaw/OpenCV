@@ -35,12 +35,15 @@ WorkManager::~WorkManager()
 
 void WorkManager::SetupWorker(const AppConfig& appConfig, const FTPConfig& ftpConfig)
 {
+	m_KinectID = appConfig.kinectID;
+	m_RoomID = appConfig.roomID;
+
 	QString nowDate = QDateTime::currentDateTime().toString("yyyy-MM-dd");
 	m_WorkDir = appConfig.videoPath;
 	QString watchPath = m_WorkDir;
 	watchPath += "/";
 	watchPath += nowDate;
-	qDebug()<<watchPath;
+
 //	m_MainGUI->SetupWatcher(watchPath.toStdString().c_str());
 //	connect(m_MonitorWorker,SIGNAL(timer_signal()),m_MainGUI,SLOT(timer_signaled()));
 //	connect(m_MainGUI,SIGNAL(stop_signal()),m_MonitorWorker,SLOT(stop()));
@@ -49,9 +52,7 @@ void WorkManager::SetupWorker(const AppConfig& appConfig, const FTPConfig& ftpCo
 	m_MQ->Prepare();
 	m_MainWorker->SetContext(m_MQ->GetContext());
 	m_MainWorker->SetWorkingDirectory(watchPath.toStdString().c_str());
-	m_MainWorker->SetVideoConverter("E:\\Projects\\bin\\HandBrakeCLI.exe");
 	m_MainWorker->SetFTPConfig(ftpConfig);
-
 }
 
 void WorkManager::StartRecorder()

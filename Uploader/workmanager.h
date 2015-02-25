@@ -34,6 +34,8 @@ signals:
 private:
 	QString m_WorkDir;
 	int m_RecordFrame;
+	int m_KinectID;
+	int m_RoomID;
 
 	MsgQueue *m_MQ;
 	MainWorker *m_MainWorker;

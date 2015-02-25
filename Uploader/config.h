@@ -6,6 +6,8 @@
 struct AppConfig
 {
 	QString videoPath;
+	int roomID;
+	int kinectID;
 };
 
 struct FTPConfig

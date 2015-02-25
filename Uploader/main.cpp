@@ -16,7 +16,9 @@ void LoadSettings(const char* path, FTPConfig& ftpConfig, AppConfig& appConfig)
 	ftpConfig.pwd = settings.value("FTP/password","password").toString();
 	ftpConfig.path = settings.value("FTP/path","/home/share").toString();
 
-	appConfig.videoPath = settings.value("General/SavePath","d:\\video").toString();
+	appConfig.videoPath = settings.value("App/SavePath","d:\\video").toString();
+	appConfig.kinectID = settings.value("App/Kinect",1).toInt();
+	appConfig.roomID = settings.value("App/Kinect",1).toInt();
 }
 
 int main(int argc, char *argv[])
@@ -26,7 +28,7 @@ int main(int argc, char *argv[])
 	FTPConfig ftpCfg;
 	LoadSettings(path,ftpCfg,appCfg);
 
-	qDebug()<<appCfg.videoPath;
+	//qDebug()<<appCfg.videoPath;
 
 	QApplication a(argc, argv);
 
