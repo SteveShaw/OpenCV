@@ -1,0 +1,177 @@
+#check a directory exists in a ftp site
+		QByteArray url = remoteUrl;
+		url += ftpUrl;
+		qDebug()<<url;
+
+		curl_easy_setopt(curl, CURLOPT_USERPWD, up.data());
+		curl_easy_setopt(curl, CURLOPT_URL, url.data());
+		curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
+		res = curl_easy_perform(curl);
+		
+Note:
+The directory path should be like this:
+"ftp://129.105.36.214//home/jianshao/2015-02-25"
+not 
+"ftp://129.105.36.214/home/jianshao/2015-02-25"
+
+#Create Directory int FTP using current date
+
+			QByteArray curl_cmd = "MKD ";
+			curl_cmd += ftpUrl;
+			qDebug()<<curl_cmd;
+//			curl_cmd += m_FTPConfig.path;
+//			curl_cmd += "/";
+//			curl_cmd += QDateTime::currentDateTime().toString("yyyy-MM-dd");
+
+			headerlist = curl_slist_append(headerlist,curl_cmd.data());
+
+			curl_easy_setopt(curl, CURLOPT_USERPWD, up.data());
+			curl_easy_setopt(curl, CURLOPT_URL, remoteUrl.data());
+			/* enable verbose for easier tracing */
+			curl_easy_setopt(curl, CURLOPT_FTP_CREATE_MISSING_DIRS, 1L);
+			curl_easy_setopt(curl, CURLOPT_QUOTE, headerlist);
+
+			res = curl_easy_perform(curl);
+	//		/* Check for errors */
+			if(res != CURLE_OK)
+			{
+				emit TransformSignal(QString("curl_easy_perform() failed: %1\n").arg(curl_easy_strerror(res)));
+			}
+			else
+			{
+				emit TransformSignal(QString("Completed create directory %1").arg(curl_cmd.data()));
+			}
+
+			qDebug()<<res;
+
+			curl_slist_free_all (headerlist);
+			headerlist = NULL;
+			
+#backup
+
+//						post_cmd = "RNFR ";
+//						post_cmd += "./";
+//						post_cmd += item_list[4];
+//						headerlist = curl_slist_append(headerlist,post_cmd.data());
+
+//						post_cmd += "RNTO";
+//						post_cmd += " ./";
+//						post_cmd += nowDate;
+//						post_cmd += "/";
+//						post_cmd += item_list[4];
+//						headerlist = curl_slist_append(headerlist,post_cmd.data());
+
+
+//						qDebug()<<qDir.path()+"/"+item_list[3];
+
+	/* Check for errors */
+	if(res != CURLE_OK)
+	{
+		emit TransformSignal(QString("curl_easy_perform() failed: %1\n").arg(curl_easy_strerror(res)));
+	}
+	else
+	{
+		emit TransformSignal(QString("Completed uploading File %1").arg(item_list[3].data()));
+	}
+
+	//workable code for uploading to a directory in the FTP
+	
+						qFile.setFileName(qDir.path()+"/"+item_list[3]);
+						qFile.open(QIODevice::ReadOnly);
+						QByteArray url = remoteUrl;
+						if(!url.endsWith("/"))url.append("/");
+						url.append(ftpUrl);
+						url.append("/");
+						url += item_list[3];
+						/* specify target */
+						curl_easy_setopt(curl,CURLOPT_URL, url.data());
+
+//						curl_easy_setopt(curl,CURLOPT_POSTQUOTE,headerlist);
+
+						qDebug()<<url;
+						/* now specify which file to upload */
+						curl_easy_setopt(curl, CURLOPT_READDATA, &qFile);
+//						qDebug()<<up.data();
+						curl_easy_setopt(curl, CURLOPT_USERPWD, up.data());
+
+						/* Set the size of the file to upload (optional).  If you give a *_LARGE
+							 option you MUST make sure that the type of the passed-in argument is a
+							 curl_off_t. If you use CURLOPT_INFILESIZE (without _LARGE) you must
+							 make sure that to pass in a type 'long' argument. */
+//						qDebug()<<qFile.size();
+						curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE,(curl_off_t)qFile.size());
+						/* Now run off and do what you've been told! */
+						res = curl_easy_perform(curl);
+						/* Check for errors */
+						if(res != CURLE_OK)
+						{
+							emit TransformSignal(QString("curl_easy_perform() failed: %1\n").arg(curl_easy_strerror(res)));
+						}
+						else
+						{
+							emit TransformSignal(QString("Completed uploading File %1").arg(item_list[3].data()));
+						}
+
+						curl_slist_free_all (headerlist);
+						headerlist = NULL;
+
+						qFile.close();
+						
+						
+//workable code: upload file to default diretory
+				if(curl)
+					{
+						qFile.setFileName(qDir.path()+"/"+item_list[4]);
+
+						post_cmd = "RNFR ";
+						post_cmd += "./";
+						post_cmd += item_list[4];
+						headerlist = curl_slist_append(headerlist,post_cmd.data());
+
+						post_cmd += "RNTO";
+						post_cmd += " ./";
+						post_cmd += nowDate;
+						post_cmd += "/";
+						post_cmd += item_list[4];
+						headerlist = curl_slist_append(headerlist,post_cmd.data());
+
+
+
+						qFile.open(QIODevice::ReadOnly);
+						QByteArray url = remoteUrl;
+						url += item_list[4];
+						/* specify target */
+						curl_easy_setopt(curl,CURLOPT_URL, url.data());
+						curl_easy_setopt(curl,CURLOPT_POSTQUOTE,headerlist);
+						/* now specify which file to upload */
+						curl_easy_setopt(curl, CURLOPT_READDATA, &qFile);
+						curl_easy_setopt(curl, CURLOPT_USERPWD, up.data());
+
+						/* Set the size of the file to upload (optional).  If you give a *_LARGE
+							 option you MUST make sure that the type of the passed-in argument is a
+							 curl_off_t. If you use CURLOPT_INFILESIZE (without _LARGE) you must
+							 make sure that to pass in a type 'long' argument. */
+						curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE,(curl_off_t)qFile.size());
+						/* Now run off and do what you've been told! */
+						res = curl_easy_perform(curl);
+						/* Check for errors */
+						if(res != CURLE_OK)
+						{
+							emit TransformSignal(QString("curl_easy_perform() failed: %1\n").arg(curl_easy_strerror(res)));
+						}
+						else
+						{
+							emit TransformSignal(QString("Completed uploading File %1").arg(item_list[4].data()));
+						}
+
+						curl_slist_free_all (headerlist);
+						headerlist = NULL;
+//						if(headerlist!=NULL)
+//						{
+//							curl_slist_free_all (headerlist);
+//							curl_easy_setopt(curl,CURLOPT_QUOTE,NULL);
+//							headerlist = NULL;
+//						}
+
+						qFile.close();
+					}
