@@ -6,13 +6,13 @@ MonitorWorker::MonitorWorker(QObject *parent)
 	:QObject(parent)
 	,m_EvtLoop(NULL)
 {
-
+	m_Today = QDate::currentDate();
 }
 
 void MonitorWorker::run()
 {
 	QTimer* timer = new QTimer;
-	timer->setInterval(150000);
+	timer->setInterval(10000);
 	connect(timer,SIGNAL(timeout()),this,SLOT(timer_job()));
 	timer->start();
 
@@ -31,7 +31,13 @@ void MonitorWorker::run()
 
 void MonitorWorker::timer_job()
 {
-	emit timer_signal();
+	//check current time
+	QDate nowDate = QDate::currentDate();
+	if(nowDate!=m_Today)
+	{
+		m_Today = nowDate;
+		emit date_changed();
+	}
 }
 
 void MonitorWorker::stop()

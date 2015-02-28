@@ -94,15 +94,13 @@ public:
 	}
 
 	static CURLcode UploadFile(CURL* curl, QFile &qFile, QDir &qDir, const char* targetDir, const char* file, const char *up);
-	static bool CheckDirectoryExists(CURL* curl, const char* host, const char *root, const char *target, const char *up);
+	static int CheckDirectoryExists(CURL* curl, const char* host, const char *root, const char *target, const char *up);
 	static CURLcode CreateFTPDirectory(CURL *curl, const char *host, const char *root, const char *target, const char *up);
 protected:
 	void run();
 
 protected slots:
-	void OnFinished(int exitCode, QProcess::ExitStatus exitStatus);
-	void OnStarted();
-	void OnError(QProcess::ProcessError error);
+	void OnDateChanged();
 
 signals:
 	void TransformSignal(QString);
@@ -111,6 +109,10 @@ private:
 	QString m_WorkDir;
 	void* m_ctx;
 	bool m_ok;
+
+	bool m_DateChanged;
+
+	QByteArray m_ErrMsg;
 
 	FTPConfig m_FTPConfig;
 };

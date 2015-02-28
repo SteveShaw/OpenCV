@@ -4,7 +4,9 @@
 #include <QScopedPointer>
 #include <QSettings>
 #include <QDebug>
+#include <QMessageBox>
 #include "config.h"
+#include "singleapp.h"
 
 
 void LoadSettings(const char* path, FTPConfig& ftpConfig, AppConfig& appConfig)
@@ -23,6 +25,15 @@ void LoadSettings(const char* path, FTPConfig& ftpConfig, AppConfig& appConfig)
 
 int main(int argc, char *argv[])
 {
+
+	SingleApplication app(argc, argv, "Kinect Uploader");
+
+	if (app.isRunning())
+	{
+		app.sendMessage("Kinect Uploader is running.");
+		return 0;
+	}
+
 	const char* path = "KinectConfig.ini";
 	AppConfig appCfg;
 	FTPConfig ftpCfg;
@@ -30,12 +41,23 @@ int main(int argc, char *argv[])
 
 	//qDebug()<<appCfg.videoPath;
 
-	QApplication a(argc, argv);
+
 
 	QScopedPointer<WorkManager> mgr(new WorkManager());
-	mgr->SetupWorker(appCfg,ftpCfg);
+	if(!mgr->SetupWorker(appCfg))
+	{
+		QMessageBox msgBox;
+		msgBox.setText(mgr->ErrorMsg());
+		msgBox.exec();
+		return app.exit();
+	}
+	else
+	{
+		mgr->Prepare(ftpCfg);
+		mgr->StartWorker();
+	}
 	//mgr->StartRecorder();
-	mgr->StartWorker();
 
-	return a.exec();
+
+	return app.exec();
 }

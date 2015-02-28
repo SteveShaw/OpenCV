@@ -17,14 +17,16 @@ SOURCES += main.cpp\
     monitorworker.cpp \
     workmanager.cpp \
     mainworker.cpp \
-    msgqueue.cpp
+    msgqueue.cpp \
+    singleapp.cpp
 
 HEADERS  += mainwindow.h \
     monitorworker.h \
     workmanager.h \
     mainworker.h \
     msgqueue.h \
-    config.h
+    config.h \
+    singleapp.h
 
 FORMS    += mainwindow.ui
 
@@ -36,4 +38,9 @@ win32:CONFIG(release, debug|release): LIBS += -LE:/Projects/lib/ -llibcurl
 else:win32:CONFIG(debug, debug|release): LIBS += -LE:/Projects/lib/ -llibcurl
 
 INCLUDEPATH += E:/Projects/curl-7.40.0-devel-mingw32/include
+
+INCLUDEPATH += C:/Qxt/include
+
+win32:CONFIG(release, debug|release): LIBS += -LC:/Qxt/lib -lQxtCore
+else:win32:CONFIG(debug, debug|release): LIBS += -LC:/Qxt/lib -lQxtCored
 

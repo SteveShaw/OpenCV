@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QRunnable>
 #include <QEventLoop>
+#include <QDate>
 
 class MonitorWorker : public QObject, public QRunnable
 {
@@ -13,18 +14,24 @@ public:
 	explicit MonitorWorker(QObject* parent=0);
 	virtual ~MonitorWorker(){}
 
+	void GetToday()
+	{
+		m_Today = QDate::currentDate();
+	}
+
 protected:
 	void run();
 
 private:
 	QEventLoop* m_EvtLoop;
+	QDate m_Today;
 
 public slots:
 	void timer_job();
 	void stop();
 
 signals:
-	void timer_signal();
+	void date_changed();
 
 };
 

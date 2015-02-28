@@ -17,10 +17,20 @@ public:
 	explicit WorkManager(QObject *parent=0);
 	virtual ~WorkManager();
 
-	void SetupWorker(const AppConfig &appConfig, const FTPConfig &ftpConfig);
+	bool SetupWorker(const AppConfig &appConfig);
+
+	void Prepare(const FTPConfig& ftpConfig);
 
 	void StartRecorder();
 	void StartWorker();
+
+	void SetupLogger(QString dir);
+
+	QString ErrorMsg() const
+	{
+		return m_ErrMsg;
+	}
+
 
 
 private:
@@ -32,13 +42,18 @@ signals:
 
 
 private:
+	QString m_LogDir;
 	QString m_WorkDir;
+	QString m_ErrMsg;
 	int m_RecordFrame;
 	int m_KinectID;
 	int m_RoomID;
 
 	MsgQueue *m_MQ;
 	MainWorker *m_MainWorker;
+	MonitorWorker *m_MonitorWorker;
+
+	bool m_WorkerStarted;
 };
 
 #endif // WORKMANAGER_H
