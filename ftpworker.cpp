@@ -3,7 +3,6 @@
 #include <QList>
 #include <QByteArray>
 #include <QThread>
-#include <QtSql>
 //#include <ftpclient.h>
 #include <QFile>
 #include <zmq.h>
@@ -80,99 +79,7 @@ void FTPWorker::run()
 
 }
 
-bool FTPWorker::InitDB()
-{
-	QSqlDatabase db = QSqlDatabase::addDatabase("QMYSQL");
-	db.setHostName(m_db_cfg.host);
-	db.setDatabaseName(m_db_cfg.db);
-	db.setUserName(m_db_cfg.user);
-	db.setPassword(m_db_cfg.pwd);
 
-	if(!db.open())
-	{
-		qDebug()<<db.lastError();
-		return false;
-	}
-
-	QStringList tables = db.tables();
-	if (!tables.contains(m_db_cfg.tbl, Qt::CaseInsensitive))
-	{
-		qDebug()<<"Table "<<m_db_cfg.tbl<<" is not exist";
-		return false;
-	}
-
-
-
-	return true;
-}
-
-bool FTPWorker::InsertRecord(const QList<QByteArray> &items, bool color, bool depth)
-{
-	QSqlQuery q;
-
-	QString queryCmd = "insert into " + m_db_cfg.tbl;
-	queryCmd += "(Start, End, FileName, DirName, Type) ";
-	queryCmd += "values (?, ?, ?, ?, ?)";
-
-
-	if(color)
-	{
-		if(!q.prepare(queryCmd))
-		{
-			qDebug()<<q.lastError();
-			return false;
-		}
-
-		q.addBindValue(items[0]);
-		q.addBindValue(items[1]);
-		q.addBindValue(items[3]);
-		q.addBindValue(m_ftp_cfg.path);
-		q.addBindValue("Color");
-		q.exec();
-
-		qDebug()<<"Insert color record into id:"<<q.lastInsertId();
-
-	}
-
-
-	if(depth)
-	{
-		if(!q.prepare(queryCmd))
-		{
-			qDebug()<<q.lastError();
-			return false;
-		}
-
-		q.addBindValue(items[0]);
-		q.addBindValue(items[1]);
-		q.addBindValue(items[4]);
-		q.addBindValue(m_ftp_cfg.path);
-		q.addBindValue("Depth");
-		q.exec();
-
-		qDebug()<<"Insert depth record into id:"<<q.lastInsertId();
-
-	}
-
-	return true;
-}
-
-//if(qryPrepared)
-//{
-//						query.bindValue(":start", item_list[0]);
-//						query.bindValue(":end", item_list[1]);
-//						query.bindValue(":filename", item_list[2]);
-//						query.bindValue(":dirname", m_ftp_cfg.path);
-//						query.bindValue(":type",item_list[4]);
-//						if(query.exec())
-//						{
-//							qDebug()<<"INFO: Inserted "+item_list[2]+" into database";
-//						}
-//						else
-//						{
-//							qDebug()<<"ERROR: Failed to insert "+item_list[2]+" into database";
-//						}
-//}
 
 
 

@@ -241,3 +241,161 @@ not
 
 		curl_easy_setopt(curl, CURLOPT_FTP_CREATE_MISSING_DIRS, 1L);
 	}
+	
+qxtlog can repeatedly use log file engine
+	//	QxtBasicFileLoggerEngine *anotherDbg = dynamic_cast<QxtBasicFileLoggerEngine*>(qxtLog->engine("dbg"));
+//	QxtBasicFileLoggerEngine *anotherApp = dynamic_cast<QxtBasicFileLoggerEngine*>(qxtLog->engine("app"));
+
+
+
+//	anotherDbg->setLogFileName("AnotherDbg.log");
+//	anotherApp->setLogFileName("AnotherInfo.log");
+
+//	qxtLog->debug("Changed to anotherDbg.log");
+//	qxtLog->info("Changed to anotherinfo.log");
+
+//backup
+void MainWorker::OnError(QProcess::ProcessError error)
+{
+	// QProcess::FailedToStart 0 The process failed to start. Either the invoked program is missing, or you may have insufficient permissions to invoke the program.
+	// QProcess::Crashed 1 The process crashed some time after starting successfully.
+	// QProcess::Timedout 2 The last waitFor...() function timed out. The state of QProcess is unchanged, and you can try calling waitFor...() again.
+	// QProcess::WriteError 4 An error occurred when attempting to write to the process. For example, the process may not be running, or it may have closed its input channel.
+	// QProcess::ReadError 3 An error occurred when attempting to read from the process. For example, the process may not be running.
+	// QProcess::UnknownError 5 An unknown error occurred. This is the default return value of error().
+	QString errMsg = "No Error";
+	switch(error)
+	{
+	case QProcess::Crashed:
+		errMsg = "Error: Crashed";
+		break;
+	case QProcess::FailedToStart:
+		errMsg = "Error: Failed to Start";
+		break;
+	case QProcess::ReadError:
+		errMsg = "Error: Read Error";
+		break;
+	case QProcess::WriteError:
+		errMsg = "Error: Write Error";
+		break;
+	default:
+		errMsg = "Error: Unknown Error";
+		break;
+	}
+	emit TransformSignal(errMsg);
+}
+
+void MainWorker::OnFinished(int exitCode, QProcess::ExitStatus exitStatus)
+{
+	if(exitStatus==QProcess::NormalExit)
+	{
+		// QString msg =
+		emit TransformSignal(QString("Transform is completed:%1").arg(exitCode));
+		m_ok = true;
+	}
+	else
+	{
+		emit TransformSignal(QString("Transform is failed:"));
+	}
+}
+void MainWorker::OnStarted()
+{
+	emit TransformSignal(QString("Transform is started"));
+}
+
+
+
+//MySQL Database operation
+bool FTPWorker::InitDB()
+{
+	QSqlDatabase db = QSqlDatabase::addDatabase("QMYSQL");
+	db.setHostName(m_db_cfg.host);
+	db.setDatabaseName(m_db_cfg.db);
+	db.setUserName(m_db_cfg.user);
+	db.setPassword(m_db_cfg.pwd);
+
+	if(!db.open())
+	{
+		qDebug()<<db.lastError();
+		return false;
+	}
+
+	QStringList tables = db.tables();
+	if (!tables.contains(m_db_cfg.tbl, Qt::CaseInsensitive))
+	{
+		qDebug()<<"Table "<<m_db_cfg.tbl<<" is not exist";
+		return false;
+	}
+
+
+
+	return true;
+}
+
+bool FTPWorker::InsertRecord(const QList<QByteArray> &items, bool color, bool depth)
+{
+	QSqlQuery q;
+
+	QString queryCmd = "insert into " + m_db_cfg.tbl;
+	queryCmd += "(Start, End, FileName, DirName, Type) ";
+	queryCmd += "values (?, ?, ?, ?, ?)";
+
+
+	if(color)
+	{
+		if(!q.prepare(queryCmd))
+		{
+			qDebug()<<q.lastError();
+			return false;
+		}
+
+		q.addBindValue(items[0]);
+		q.addBindValue(items[1]);
+		q.addBindValue(items[3]);
+		q.addBindValue(m_ftp_cfg.path);
+		q.addBindValue("Color");
+		q.exec();
+
+		qDebug()<<"Insert color record into id:"<<q.lastInsertId();
+
+	}
+
+
+	if(depth)
+	{
+		if(!q.prepare(queryCmd))
+		{
+			qDebug()<<q.lastError();
+			return false;
+		}
+
+		q.addBindValue(items[0]);
+		q.addBindValue(items[1]);
+		q.addBindValue(items[4]);
+		q.addBindValue(m_ftp_cfg.path);
+		q.addBindValue("Depth");
+		q.exec();
+
+		qDebug()<<"Insert depth record into id:"<<q.lastInsertId();
+
+	}
+
+	return true;
+}
+
+//if(qryPrepared)
+//{
+//						query.bindValue(":start", item_list[0]);
+//						query.bindValue(":end", item_list[1]);
+//						query.bindValue(":filename", item_list[2]);
+//						query.bindValue(":dirname", m_ftp_cfg.path);
+//						query.bindValue(":type",item_list[4]);
+//						if(query.exec())
+//						{
+//							qDebug()<<"INFO: Inserted "+item_list[2]+" into database";
+//						}
+//						else
+//						{
+//							qDebug()<<"ERROR: Failed to insert "+item_list[2]+" into database";
+//						}
+//}

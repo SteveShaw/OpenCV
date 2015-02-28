@@ -5,7 +5,6 @@
 #-------------------------------------------------
 
 QT       += core
-QT       += sql
 
 QT       -= gui
 
@@ -21,7 +20,8 @@ SOURCES += main.cpp \
     worker.cpp \
     workerclassmanager.cpp \
     msgqueue.cpp \
-    ftpworker.cpp
+    ftpworker.cpp \
+    singleapp.cpp
 
 HEADERS += \
     kinectcapture.h \
@@ -29,7 +29,8 @@ HEADERS += \
     dbitem.h \
     workerclassmanager.h \
     msgqueue.h \
-    ftpworker.h
+    ftpworker.h \
+    singleapp.h
 
 
 INCLUDEPATH += "C:/Program Files/Microsoft SDKs/Kinect/v2.0_1409/inc"
@@ -52,4 +53,10 @@ else:win32:CONFIG(debug, debug|release): LIBS += -LE:/opencv/opencv/build/lib/De
 #LIBS += -LE:/Projects/lib -lavcodec -lavutil -lavcodec -lavformat -lswscale
 
 INCLUDEPATH += E:/opencv/opencv/build/include
+
+
+INCLUDEPATH += C:/Qxt/include
+
+win32:CONFIG(release, debug|release): LIBS += -LC:/Qxt/lib -lQxtCore
+else:win32:CONFIG(debug, debug|release): LIBS += -LC:/Qxt/lib -lQxtCored
 

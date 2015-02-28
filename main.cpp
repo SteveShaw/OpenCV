@@ -9,6 +9,7 @@
 #include <QString>
 #include <QDate>
 #include "msgqueue.h"
+#include "singleapp.h"
 //#include <ftpclient.h>
 //#include <QSqlDatabase>
 //#include <QSqlQuery>
@@ -83,15 +84,19 @@ void SaveSettings(const char* path, const DBConfig& db_cfg, FTPConfig &ftp_cfg, 
 int main(int argc, char *argv[])
 {
 
-	QCoreApplication a(argc, argv);
+	SingleApplication a(argc, argv, "Kinect Recorder");
+
+	if (a.isRunning())
+	{
+		a.sendMessage("message from other instance of Kinect Recorder.");
+		return 0;
+	}
 
 	const char* path = "KinectConfig.ini";
 	DBConfig db_cfg;
 	FTPConfig ftp_cfg;
 	QString saveDir;
 	LoadSettings(path,db_cfg,ftp_cfg,saveDir);
-
-	qDebug()<<saveDir;
 
 	//SaveSettings(path,db_cfg,ftp_cfg,saveDir);
 
@@ -110,15 +115,15 @@ int main(int argc, char *argv[])
 
 	kc->SetSaveDirectory(saveDir.toStdString().c_str());
 
-	if(argc>=2)
-	{
-		kc->SetSaveDirectory(argv[1]);
-	}
+//	if(argc>=2)
+//	{
+//		kc->SetSaveDirectory(argv[1]);
+//	}
 
-	if(argc>=3)
-	{
-		kc->SetFrameCount(QString(argv[2]).toInt());
-	}
+//	if(argc>=3)
+//	{
+//		kc->SetFrameCount(QString(argv[2]).toInt());
+//	}
 
 	MsgQueue mq;
 	mq.Prepare();
@@ -137,14 +142,8 @@ int main(int argc, char *argv[])
 
 	QThreadPool::globalInstance()->waitForDone();
 
-	kc->Release();
+	//kc->Release();
 	kc.reset();
-
-//	zmq_close(sender);
-//	zmq_ctx_term(ctx);
-
-	//    delete wk;
-	//    delete kc;
 
 	return a.exec();
 

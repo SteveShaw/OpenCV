@@ -7,6 +7,8 @@
 #include <QScopedPointer>
 #include <QDir>
 #include <QTime>
+#include <QxtCore/QxtBasicFileLoggerEngine>
+#include <QxtCore/QxtLogger>
 
 //#include "QVideoEncoder.h"
 #include "dbitem.h"

@@ -2,6 +2,7 @@
 #include <QDebug>
 #include <QDateTime>
 
+
 #define FRAMECOUNT 30
 
 KinectCapture::KinectCapture()
@@ -25,14 +26,13 @@ KinectCapture::KinectCapture()
 KinectCapture::~KinectCapture()
 {
 	qDebug()<<"release";
-
 }
 
 //Initialize Kinect Sensor
 bool KinectCapture::Initialize()
 {
 	//    IKinectSensor *sensor = nullptr;
-	this->SetSaveDirectory(m_save_dir.path().toStdString().c_str());
+	//this->SetSaveDirectory(m_save_dir.path().toStdString().c_str());
 	if(FAILED(GetDefaultKinectSensor(&m_pKinectSensor)))
 	{
 		qDebug()<<"Fatal Error: Canno Find Default Kinect Sensor";
@@ -204,135 +204,6 @@ void KinectCapture::ProcessDepthFrame(UINT16 *pBuffer, USHORT nMinDepth, USHORT 
 	}
 }
 
-//void KinectCapture::CaptureDepthFrame(IMultiSourceFrame *sf, int frame_count)
-//{
-//	if(sf==NULL)
-//	{
-//		//		qDebug()<<"SF is NULL";
-//		return;
-//	}
-
-//	IDepthFrameReference *idfr = NULL;
-
-//	if(SUCCEEDED(sf->get_DepthFrameReference(&idfr)))
-//	{
-//		IDepthFrame* idf = NULL;
-
-//		if(SUCCEEDED(idfr->AcquireFrame(&idf)))
-//		{
-//			USHORT min_dist;
-//			USHORT max_dist;
-
-//			if(SUCCEEDED(idf->get_DepthMinReliableDistance(&min_dist))
-//				 &&SUCCEEDED(idf->get_DepthMaxReliableDistance(&max_dist)))
-//			{
-//				UINT buffer_size = 0;
-//				UINT16 *ptr_buffer = NULL;
-
-//				if(SUCCEEDED(idf->AccessUnderlyingBuffer(&buffer_size,&ptr_buffer)))
-//				{
-//					ProcessDepthFrame(ptr_buffer,min_dist,max_dist);
-
-//					//					if(frame_count==0)
-//					//					{
-
-//					////						m_db_item.depthFileName = "Depth_"+m_db_item.start+".m4v";
-//					////						QString path = m_save_dir.absoluteFilePath(m_db_item.depthFileName);
-//					//						qDebug()<<"Start recording "+m_db_item.depthFileName;
-//					////						m_depth_video_writer->open(path.toStdString().c_str(),
-//					////																			 CV_FOURCC('m','p','4','v')
-//					////																			 ,8.0,
-//					////																			 //cv::Size(704,576));
-//					////																			 cv::Size(DepthImageWidth,DepthImageHeight));
-
-//					//						//_cvw->write(_color_image);
-//					//					}
-
-
-//					//					m_depth_video_writer->write(m_depth_mat);
-//				}
-
-//				if(idfr!=NULL)
-//				{
-//					idfr->Release();
-//					idfr = NULL;
-//				}
-//			}
-
-//			if(idf!=NULL)
-//			{
-//				idf->Release();
-//				idf = NULL;
-//			}
-
-//		}
-//	}
-//}
-
-//bool KinectCapture::CaptureColorFrame(IMultiSourceFrame *sf, int frame_count)
-//{
-//	if(sf==NULL)
-//	{
-//		return false;
-//	}
-
-//	bool ok = false;
-
-//	IColorFrameReference *cfr = NULL;
-
-
-//	if(SUCCEEDED(sf->get_ColorFrameReference(&cfr)))
-//	{
-//		IColorFrame* cf = NULL;
-//		if(cfr && SUCCEEDED(cfr->AcquireFrame(&cf)))
-//		{
-//			HRESULT hr = cf->CopyConvertedFrameDataToArray(ColorImageSize,m_color_mat.data,ColorImageFormat_Bgra);
-//			if(SUCCEEDED(hr))
-//			{
-//				ok = true;
-//				//				if(frame_count==0)
-//				//				{
-//				////					m_db_item.start = QDateTime::currentDateTime().toString(m_tm_fmt);
-//				////					m_db_item.type = "Color";
-//				////					m_db_item.colorFileName = "Color_"+m_db_item.start+".m4v";
-//				//////					m_db_item.dir = m_save_dir.path();
-
-//				////					QString path = m_save_dir.absoluteFilePath(m_db_item.colorFileName);
-//				//					qDebug()<<"Start recording "+m_db_item.colorFileName;
-
-//				////					//m_encoder.createFile(path,640,360,1000000,40,8);
-
-
-//				////					m_color_video_writer->open(path.toStdString().c_str(),CV_FOURCC('m','p','4','v'),8.0, cv::Size(640,360));
-
-//				//																	 //cv::Size(704,576));
-//				//				}
-
-//				cv::Mat scaled_image, bgr;
-//				cv::resize(m_color_mat,scaled_image,cv::Size(640,360),0,0,CV_INTER_NN);
-//				cv::cvtColor(scaled_image,bgr,CV_BGRA2BGR);
-//				m_color_video_writer->write(bgr);
-//				//m_encoder.encodeImage(scaled_image.ptr<unsigned char>(), scaled_image.step1());
-//			}
-
-//			if(cfr!=NULL)
-//			{
-//				cfr->Release();
-//				cfr = NULL;
-//			}
-//		}
-
-//		if(cf!=NULL)
-//		{
-//			cf->Release();
-//			cf = NULL;
-//		}
-//	}
-
-
-//	return ok;
-//}
-
 bool KinectCapture::SaveAcquiredFrames(IColorFrame *cf, IDepthFrame *df)
 {
 	bool ok = false;
@@ -350,18 +221,23 @@ bool KinectCapture::SaveAcquiredFrames(IColorFrame *cf, IDepthFrame *df)
 				m_db_item.dir = m_save_dir.path();
 				m_db_item.colorFileName = "Color_"+m_db_item.start+".m4v";
 				qDebug()<<"Start Recording "<<m_db_item.colorFileName;
+				qxtLog->info(QString("Start Recording %1").arg(m_db_item.colorFileName));
 				QString path = m_save_dir.absoluteFilePath(m_db_item.colorFileName);
 				m_color_video_writer->open(path.toStdString().c_str(),CV_FOURCC('m','p','4','v'),8.0, cv::Size(640,360));
 				m_db_item.depthFileName = "Depth_"+m_db_item.start+".m4v";
 				path = m_save_dir.absoluteFilePath(m_db_item.depthFileName);
 				qDebug()<<"Start Recording "<<m_db_item.depthFileName;
+				qxtLog->info(QString("Start Recording %1").arg(m_db_item.depthFileName));
 				m_depth_video_writer->open(path.toStdString().c_str(),CV_FOURCC('m','p','4','v'),8.0,cv::Size(DepthImageWidth,DepthImageHeight));
 			}
 
 			m_depth_video_writer->write(m_depth_mat);
+			qxtLog->info(QString("%1:%2").arg(m_db_item.depthFileName).arg(m_frame_count));
 			m_color_video_writer->write(m_bgr_mat);
+			qxtLog->info(QString("%1:%2").arg(m_db_item.colorFileName).arg(m_frame_count));
 			++m_frame_count;
-			if(m_frame_count%100==0)
+
+			if(m_frame_count%500==0)
 			{
 				qDebug()<<"Frame Count:"<<m_frame_count;
 			}
@@ -383,11 +259,13 @@ bool KinectCapture::SaveAcquiredFrames(IColorFrame *cf, IDepthFrame *df)
 
 			if(m_depth_video_writer->isOpened())
 			{
+				qxtLog->info(QString("End Recording %1").arg(m_db_item.depthFileName));
 				m_depth_video_writer->release();
 			}
 
 			if(m_color_video_writer->isOpened())
 			{
+				qxtLog->info(QString("End Recording %1").arg(m_db_item.colorFileName));
 				m_color_video_writer->release();
 			}
 		}
@@ -489,14 +367,25 @@ void KinectCapture::SetSaveDirectory(const char *path)
 {
 	QString savePath = QString("%1").arg(path);
 	QString nowDate = QDateTime::currentDateTime().toString("yyyy-MM-dd");
-	savePath += "/";
-	savePath += nowDate;
+	m_save_dir.setPath(savePath);
+	savePath = m_save_dir.absoluteFilePath(nowDate);
 	m_save_dir.setPath(QString(savePath));
 	qDebug()<<savePath;
+
 	if(!m_save_dir.exists())
 	{
-		m_save_dir.mkdir(savePath);
+		m_save_dir.mkpath(savePath);
 	}
+
+	//set logger
+	QxtBasicFileLoggerEngine *info = new QxtBasicFileLoggerEngine(m_save_dir.absoluteFilePath(QString("Recorder_%1.log").arg(nowDate)));
+	qxtLog->addLoggerEngine("app", info);
+	qxtLog->disableAllLogLevels();
+
+	qxtLog->enableLogLevels("app",  QxtLogger::InfoLevel | QxtLogger::WarningLevel |
+													QxtLogger::ErrorLevel | QxtLogger::FatalLevel);
+
+	qxtLog->info("Kinect Recorder Started");
 }
 
 void KinectCapture::Release()
@@ -521,11 +410,13 @@ void KinectCapture::Release()
 
 	if(m_color_video_writer->isOpened())
 	{
+		qxtLog->info(QString("End Recording %1").arg(m_db_item.colorFileName));
 		m_color_video_writer->release();
 	}
 
 	if(m_depth_video_writer->isOpened())
 	{
+		qxtLog->info(QString("End Recording %1").arg(m_db_item.depthFileName));
 		m_depth_video_writer->release();
 	}
 
@@ -533,33 +424,4 @@ void KinectCapture::Release()
 
 }
 
-//void KinectCapture::WriteVideo()
-//{
-////    if(!_cvw->isOpened())
-////    {
-////       bool retval =  _cvw->open(path,9,8.0,cv::Size(KinectCapture::Width,KinectCapture::Height));
-////       qDebug()<<retval;
-////    }
-
-//    _cvw->write(_color_image);
-
-//}
-
-//bool KinectCapture::StartWriteVideo(const char *path)
-//{
-//    return _cvw->open(path,9,8.0,cv::Size(ColorImageWidth,ColorImageHeight));
-//}
-
-//void KinectCapture::EndWriteVideo()
-//{
-//    //_cvw->release();
-//}
-
-//void
-
-//bool KinectCapture::CopyColorFrameData(IColorFrame* frame)
-//{
-//   HRESULT hr = frame->CopyConvertedFrameDataToArray(_color_image_size,_color_image.data,ColorImageFormat_Bgra);
-//   return SUCCEEDED(hr);
-//}
 

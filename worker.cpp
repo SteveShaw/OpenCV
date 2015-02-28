@@ -4,7 +4,8 @@
 #include <QDebug>
 #include <QByteArray>
 #include <QDir>
-
+//#include <QxtCore/QxtBasicFileLoggerEngine>
+//#include <QxtCore/QxtLogger>
 
 
 GrabWorker::~GrabWorker()
@@ -111,6 +112,10 @@ void GrabWorker::run()
 	}
 
 	qDebug()<<"End Thread";
+
+	_kc->Release();
+
+	qxtLog->info("Kinect Recorder Exit");
 
 	zmq_close(rcv);
 	zmq_close(pusher);
