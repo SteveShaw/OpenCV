@@ -5,6 +5,7 @@
 #include <QRunnable>
 #include <QEventLoop>
 #include <QDate>
+#include "config.h"
 
 class MonitorWorker : public QObject, public QRunnable
 {
@@ -21,10 +22,12 @@ public:
 
 protected:
 	void run();
+	bool InitDB();
 
 private:
 	QEventLoop* m_EvtLoop;
 	QDate m_Today;
+	DBConfig m_DBConfig;
 
 public slots:
 	void timer_job();

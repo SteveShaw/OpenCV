@@ -18,5 +18,14 @@ struct FTPConfig
 	QString path;
 };
 
+struct DBConfig
+{
+	QString host;
+	QString user;
+	QString pwd;
+	QString tbl;
+	QString db;
+};
+
 #endif // CONFIG_H
 

@@ -4,6 +4,7 @@
 #include <zmq.h>
 #include <QThread>
 #include <QTextStream>
+#include <QProcess>
 #include <QxtCore/QxtBasicFileLoggerEngine>
 #include <QxtCore/QxtLogger>
 
@@ -28,10 +29,10 @@ void MainWorker::SetWorkingDirectory(const char *path)
 	m_WorkDir = path;
 }
 
-CURLcode MainWorker::UploadFile(CURL *curl, QFile &qFile, QDir& qDir, const char *targetDir, const char *file,
+CURLcode MainWorker::UploadFile(CURL *curl, QFile &qFile, const char *targetDir, const char *file,
 																const char* up)
 {
-	qFile.setFileName(qDir.path()+"/"+file);
+	qFile.setFileName(file);
 
 	qFile.open(QIODevice::ReadOnly);
 	QByteArray url = targetDir;
@@ -136,6 +137,43 @@ CURLcode MainWorker::CreateFTPDirectory(CURL* curl,const char *host, const char*
 	return ret;
 }
 
+bool MainWorker::UploadThroughCURL(QProcess* proc, const QString &fileName, const QString &dirName,
+																	 const char *up, const QString &host)
+{
+	QString command = QString("curl.exe -T %1 ftp://%2@%3/%4/").arg(fileName).arg(up).arg(host).arg(dirName);
+	proc->start(command);
+	if(proc->waitForStarted())
+	{
+		proc->waitForReadyRead();
+		proc->waitForBytesWritten();
+		m_CurlMsg.clear();
+		m_CurlMsg.append(proc->readAll());
+		proc->waitForFinished();
+
+		while(proc->processId()>0)
+		{
+			m_CurlMsg.append(proc->readAll());
+			proc->waitForFinished();
+		}
+		proc->closeWriteChannel();
+
+		foreach(const QByteArray info, m_CurlMsg)
+		{
+			if(info.contains("Failed to connect"))
+			{
+				return false;
+			}
+		}
+		emit TransformSignal(QString("Output from curl:%1").arg(m_CurlMsg.join(' ').data()));
+
+		return true;
+	}
+
+	return false;
+
+
+}
+
 void MainWorker::run()
 {
 	//create message queue
@@ -174,9 +212,6 @@ void MainWorker::run()
 	QByteArray up = m_FTPConfig.user.toStdString().c_str();
 	up+=":";
 	up+=m_FTPConfig.pwd;
-
-	int retry = 0;
-
 
 	if(curl)
 	{
@@ -226,15 +261,21 @@ void MainWorker::run()
 
 	if(res==CURLE_OK)
 	{
-		target += m_FTPConfig.path;
-		if(!target.endsWith("/"))target.append("/");
+		//target += m_FTPConfig.path;
+		//if(!target.endsWith("/"))target.append("/");
 		target.append(nowDate);
 		if(!target.endsWith("/"))target.append("/");
 	}
 
+	QList<QByteArray> errUploadList;
+
+	QProcess *proc = new QProcess();
+	proc->setProcessChannelMode(QProcess::ForwardedChannels);
+
 	while(true)
 	{
 
+		//check date changed and make new directory on FTP
 		if(m_DateChanged && curl)
 		{
 			curl_easy_cleanup(curl);
@@ -294,12 +335,29 @@ void MainWorker::run()
 
 		}
 
-
+		//end check date changed
 
 		if(zmq_recv(rcv,buf,7,ZMQ_DONTWAIT)>0)
 		{
 			break;
 		}
+
+		//check whether the error list is not empty and then upload one each time
+
+//		if(errUploadList.size()>0)
+//		{
+//			emit TransformSignal(QString("Reuploading File %1").arg(errUploadList.at(0).data()));
+//			res = MainWorker::UploadFile(curl,qFile,errUploadList.at(1).data(),errUploadList.at(0).data(),up.data());
+//			if(res==CURLE_OK)
+//			{
+//				emit TransformSignal(QString("Completed uploading File %1").arg(errUploadList.at(0).data()));
+//				errUploadList.pop_front();
+//				errUploadList.pop_front();
+//			}
+//		}
+
+
+		//end checking error list
 
 		int rc = zmq_poll(items,1,3000);
 
@@ -321,66 +379,81 @@ void MainWorker::run()
 
 				if(item_list.size()==5)
 				{
-					emit TransformSignal(item_list[3]);
-					emit TransformSignal(item_list[4]);
+					QDir localDir;
+					localDir.setPath(item_list[2]);
 
-					if(curl)
+					emit TransformSignal(localDir.absoluteFilePath(item_list[3]));
+					emit TransformSignal(localDir.absoluteFilePath(item_list[4]));
+
+
+					bool ok = UploadThroughCURL(proc,localDir.absoluteFilePath(item_list[3]),nowDate,up.data(),m_FTPConfig.host);
+					if(ok)
 					{
-						retry  = 0;
+						emit TransformSignal(QString("Completed uploading File %1").arg(item_list[3].data()));
+					}
+					else
+					{
+						emit TransformSignal(QString("Failed to uploading File %1").arg(item_list[3].data()));
+						QString filePath = localDir.absoluteFilePath(item_list[3]);
+						errUploadList.append(filePath.toStdString().c_str());
+						errUploadList.append(target);
+					}
 
-						while(retry<=3)
-						{
-							++retry;
-							res = MainWorker::UploadFile(curl,qFile,qDir,target.data(),item_list[3].data(),up.data());
+					ok = UploadThroughCURL(proc,localDir.absoluteFilePath(item_list[4]),nowDate,up.data(),m_FTPConfig.host);
 
-							if(res != CURLE_OK)
-							{
-								qxtLog->error(QString("curl_easy_perform() failed: %1. Retry: %2\n").arg(curl_easy_strerror(res)).arg(retry));
-								emit TransformSignal(QString("curl_easy_perform() failed: %1. Retry: %2\n").arg(curl_easy_strerror(res)).arg(retry));
-							}
-							else
-							{
-								qxtLog->info(QString("Completed uploading File %1").arg(item_list[3].data()));
-								emit TransformSignal(QString("Completed uploading File %1").arg(item_list[3].data()));
-								break;
-							}
+					if(ok)
+					{
+						emit TransformSignal(QString("Completed uploading File %1").arg(item_list[4].data()));
+					}
+					else
+					{
+						emit TransformSignal(QString("Failed to uploading File %1").arg(item_list[4].data()));
+						QString filePath = localDir.absoluteFilePath(item_list[3]);
+						errUploadList.append(filePath.toStdString().c_str());
+						errUploadList.append(target);
+					}
 
-							++retry;
-						}
+//					if(curl)
+//					{
+//						//qDebug()<<target;
 
-						if(retry==4)
-						{
-							qxtLog->error(QString("Upload Failed: %1").arg(item_list[3].data()));
-						}
+//						QString filePath = qDir.absoluteFilePath(QString(item_list[3]));
+//						//qDebug()<<filePath;
+//						res = MainWorker::UploadFile(curl,qFile,target.data(),filePath.toStdString().c_str(),up.data());
 
-						retry = 0;
+//						if(res != CURLE_OK)
+//						{
+//							m_ErrMsg = curl_easy_strerror(res);
+//							qxtLog->error(QString("curl_easy_perform() failed: %1").arg(m_ErrMsg.data()));
+//							emit TransformSignal(QString("curl_easy_perform() failed: %1").arg(m_ErrMsg.data()));
+//							errUploadList.append(filePath.toStdString().c_str());
+//							errUploadList.append(target);
+//						}
+//						else
+//						{
+//							qxtLog->info(QString("Completed uploading File %1").arg(item_list[3].data()));
+//							emit TransformSignal(QString("Completed uploading File %1").arg(item_list[3].data()));
+//						}
 
-						while(retry<=3)
-						{
-							++retry;
-							res = MainWorker::UploadFile(curl,qFile,qDir,target.data(),item_list[4].data(),up.data());
+//						filePath = qDir.absoluteFilePath(QString(item_list[4]));
+//						res = MainWorker::UploadFile(curl,qFile,target.data(),filePath.toStdString().c_str(),up.data());
 
-							if(res != CURLE_OK)
-							{
-								qxtLog->error(QString("curl_easy_perform() failed: %1. Retry: %2\n").arg(curl_easy_strerror(res)).arg(retry));
-								emit TransformSignal(QString("curl_easy_perform() failed: %1. Retry: %2\n").arg(curl_easy_strerror(res)).arg(retry));
-							}
-							else
-							{
-								qxtLog->info(QString("Completed uploading File %1").arg(item_list[4].data()));
-								emit TransformSignal(QString("Completed uploading File %1").arg(item_list[4].data()));
-								break;
-							}
+//						if(res != CURLE_OK)
+//						{
+//							m_ErrMsg = curl_easy_strerror(res);
+//							qxtLog->error(QString("curl_easy_perform() failed: %1").arg(m_ErrMsg.data()));
+//							emit TransformSignal(QString("curl_easy_perform() failed: %1").arg(m_ErrMsg.data()));
+//							errUploadList.append(filePath.toStdString().c_str());
+//							errUploadList.append(target);
+//						}
+//						else
+//						{
+//							qxtLog->info(QString("Completed uploading File %1").arg(item_list[4].data()));
+//							emit TransformSignal(QString("Completed uploading File %1").arg(item_list[4].data()));
+//							break;
+//						}
 
-							++retry;
-						}
-
-						if(retry==4)
-						{
-							qxtLog->error(QString("Upload Failed: %1").arg(item_list[4].data()));
-						}
-
-					}//end if(curl)
+//					}//end if(curl)
 				}//end if(item_list.size()==5)
 			}//end if(rv_len > 0 && rv_len < MAX_SIZE - 1)
 
@@ -397,6 +470,9 @@ void MainWorker::run()
 
 	zmq_close(rcv);
 	zmq_close(recorder);
+
+	delete proc;
+	proc = NULL;
 }
 
 

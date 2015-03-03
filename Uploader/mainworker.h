@@ -10,6 +10,7 @@
 #include <QDateTime>
 #include <QFile>
 #include <QDir>
+#include <QProcess>
 #include <curl/curl.h>
 #include "config.h"
 
@@ -93,9 +94,10 @@ public:
 		m_FTPConfig.user = cfg.user;
 	}
 
-	static CURLcode UploadFile(CURL* curl, QFile &qFile, QDir &qDir, const char* targetDir, const char* file, const char *up);
+	static CURLcode UploadFile(CURL* curl, QFile &qFile, const char* targetDir, const char* file, const char *up);
 	static int CheckDirectoryExists(CURL* curl, const char* host, const char *root, const char *target, const char *up);
 	static CURLcode CreateFTPDirectory(CURL *curl, const char *host, const char *root, const char *target, const char *up);
+	bool UploadThroughCURL(QProcess *proc, const QString &fileName, const QString &dirName, const char* up, const QString& host);
 protected:
 	void run();
 
@@ -113,6 +115,8 @@ private:
 	bool m_DateChanged;
 
 	QByteArray m_ErrMsg;
+
+	QByteArrayList m_CurlMsg;
 
 	FTPConfig m_FTPConfig;
 };

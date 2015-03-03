@@ -1,6 +1,9 @@
 #include "monitorworker.h"
 #include <QTimer>
 #include <QDebug>
+#include <QSqlDatabase>
+#include <QSqlError>
+#include <QSqlQuery>
 
 MonitorWorker::MonitorWorker(QObject *parent)
 	:QObject(parent)
@@ -27,6 +30,30 @@ void MonitorWorker::run()
 	}
 
 	delete timer;
+}
+
+bool MonitorWorker::InitDB()
+{
+	QSqlDatabase db = QSqlDatabase::addDatabase("QMYSQL");
+	db.setHostName(m_DBConfig.host);
+	db.setDatabaseName(m_DBConfig.db);
+	db.setUserName(m_DBConfig.user);
+	db.setPassword(m_DBConfig.pwd);
+
+	if(!db.open())
+	{
+		qDebug()<<db.lastError();
+		return false;
+	}
+
+	QStringList tables = db.tables();
+	if (!tables.contains(m_DBConfig.tbl, Qt::CaseInsensitive))
+	{
+		qDebug()<<"Table "<<m_DBConfig.tbl<<" is not exist";
+		return false;
+	}
+
+	return true;
 }
 
 void MonitorWorker::timer_job()
