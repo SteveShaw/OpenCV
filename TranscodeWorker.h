@@ -2,6 +2,7 @@
 #define FTPWORKER_H
 
 #include <QRunnable>
+#include <QProcess>
 //#include <QEventLoop>
 
 
@@ -10,11 +11,11 @@
 class KinectCapture;
 //class FTPUploader;
 
-class FTPWorker : public QRunnable
+class TranscodeWorker : public QRunnable
 {
 public:
-	FTPWorker(KinectCapture* kc, void* ctx);
-	~FTPWorker();
+	TranscodeWorker(KinectCapture* kc, void* ctx);
+	~TranscodeWorker();
 
 	void SetDB(const DBConfig &cfg)
 	{
@@ -39,6 +40,8 @@ protected:
 	bool InitDB();
 
 	bool InsertRecord(const QList<QByteArray> &items, bool color, bool depth);
+
+	static void Transcode(QProcess* proc, const QString& input, const QString &output);
 
 private:
 	KinectCapture* m_kc;

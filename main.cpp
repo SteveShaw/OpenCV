@@ -4,7 +4,7 @@
 #include <QScopedPointer>
 #include "kinectcapture.h"
 #include "workerclassmanager.h"
-#include "worker.h"
+#include "GrabWorker.h"
 #include <QSettings>
 #include <QString>
 #include <QDate>

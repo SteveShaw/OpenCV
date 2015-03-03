@@ -17,20 +17,20 @@ TEMPLATE = app
 
 SOURCES += main.cpp \
     kinectcapture.cpp \
-    worker.cpp \
     workerclassmanager.cpp \
     msgqueue.cpp \
-    ftpworker.cpp \
-    singleapp.cpp
+    singleapp.cpp \
+    TranscodeWorker.cpp \
+    GrabWorker.cpp
 
 HEADERS += \
     kinectcapture.h \
-    worker.h \
     dbitem.h \
     workerclassmanager.h \
     msgqueue.h \
-    ftpworker.h \
-    singleapp.h
+    singleapp.h \
+    TranscodeWorker.h \
+    GrabWorker.h
 
 
 INCLUDEPATH += "C:/Program Files/Microsoft SDKs/Kinect/v2.0_1409/inc"

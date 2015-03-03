@@ -27,12 +27,16 @@ public:
 protected:
     void run();
 
+
 private:
     KinectCapture *_kc;
     void* _ctx;
 
+		static QByteArray s_ProcExitMsg;
+
 signals:
 		void new_item(QString, QString, QString, QString, QString);
+
 };
 
 #endif // WORKER_H

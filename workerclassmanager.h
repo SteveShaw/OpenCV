@@ -5,7 +5,7 @@
 #include "dbitem.h"
 class GrabWorker;
 //class UploadThread;
-class FTPWorker;
+class TranscodeWorker;
 class KinectCapture;
 
 class WorkerManager : public QObject
@@ -27,7 +27,7 @@ public slots:
 
 public:
 	GrabWorker* m_grabWorker;
-	FTPWorker* m_ftpWorker;
+	TranscodeWorker* m_ftpWorker;
 };
 
 #endif // WORKERCLASSMANAGER_H
