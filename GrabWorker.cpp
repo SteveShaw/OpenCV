@@ -102,7 +102,7 @@ void GrabWorker::run()
 
 	_kc->Release();
 
-	qxtLog->info("Kinect Recorder Exit");
+//	qxtLog->info("Kinect Recorder Exit");
 
 	zmq_close(rcv);
 	zmq_close(pusher);

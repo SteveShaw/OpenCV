@@ -9,6 +9,9 @@
 #include <QTime>
 #include <QxtCore/QxtBasicFileLoggerEngine>
 #include <QxtCore/QxtLogger>
+#include <QList>
+#include <QFile>
+#include <QTextStream>
 
 //#include "QVideoEncoder.h"
 #include "dbitem.h"
@@ -167,6 +170,8 @@ private:
 		QTime m_Last; //to avoid record small video file in one minute
 
 
+		QList<QFile*> m_logFileList;
+		QList<QTextStream*> m_tsList;
 
 //    IMultiSourceFrameReader *_frame_reader;
 
