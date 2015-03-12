@@ -103,18 +103,27 @@ protected:
 
 protected slots:
 	void OnDateChanged();
+	void OnFinished(int, QProcess::ExitStatus);
+//	void OnReadyReadStdOut();
+//	void OnReadyReadStdErr();
 
 signals:
 	void TransformSignal(QString);
+	void DBSignal(QStringList);
 
 private:
 	QString m_WorkDir;
+
+	QProcess *m_Proc;
 	void* m_ctx;
 	bool m_ok;
 
 	bool m_DateChanged;
 
 	QByteArray m_ErrMsg;
+
+	QProcess::ExitStatus m_ProcExitStat;
+	int m_ProcExitCode;
 
 	QByteArrayList m_CurlMsg;
 

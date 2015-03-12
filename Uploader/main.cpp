@@ -9,7 +9,7 @@
 #include "singleapp.h"
 
 
-void LoadSettings(const char* path, FTPConfig& ftpConfig, AppConfig& appConfig)
+void LoadSettings(const char* path, FTPConfig& ftpConfig, AppConfig& appConfig, DBConfig& dbConfig)
 {
 	QSettings settings(QString(path),QSettings::IniFormat);
 
@@ -21,6 +21,13 @@ void LoadSettings(const char* path, FTPConfig& ftpConfig, AppConfig& appConfig)
 	appConfig.videoPath = settings.value("App/SavePath","d:\\video").toString();
 	appConfig.kinectID = settings.value("App/Kinect",1).toInt();
 	appConfig.roomID = settings.value("App/Kinect",1).toInt();
+
+	dbConfig.db = settings.value("Database/db","kinectdata").toString();
+	dbConfig.tbl = settings.value("Database/tbl","KinectVideo").toString();
+	dbConfig.host = settings.value("Database/host","129.105.36.214").toString();
+	dbConfig.pwd = settings.value("Database/password","123456").toString();
+	dbConfig.user = settings.value("Database/user","root").toString();
+
 }
 
 int main(int argc, char *argv[])
@@ -37,7 +44,8 @@ int main(int argc, char *argv[])
 	const char* path = "KinectConfig.ini";
 	AppConfig appCfg;
 	FTPConfig ftpCfg;
-	LoadSettings(path,ftpCfg,appCfg);
+	DBConfig dbCfg;
+	LoadSettings(path,ftpCfg,appCfg, dbCfg);
 
 	//qDebug()<<appCfg.videoPath;
 
@@ -53,7 +61,7 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-		mgr->Prepare(ftpCfg);
+		mgr->Prepare(ftpCfg,dbCfg);
 		mgr->StartWorker();
 	}
 	//mgr->StartRecorder();

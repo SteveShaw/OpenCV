@@ -1,6 +1,6 @@
 #include "workmanager.h"
 #include "mainwindow.h"
-#include "monitorworker.h"
+#include "DBWorker.h"
 #include <QThreadPool>
 #include <QDateTime>
 #include <QProcess>
@@ -9,7 +9,7 @@
 #include <QxtCore/QxtLogger>
 #include "msgqueue.h"
 #include "mainworker.h"
-#include "monitorworker.h"
+#include "DBWorker.h"
 
 
 
@@ -32,7 +32,7 @@ WorkManager::~WorkManager()
 	if(m_WorkerStarted)
 	{
 		m_MQ->SendStopSignal();
-		m_MonitorWorker->stop();
+		m_DBWorker->Stop();
 		QThreadPool::globalInstance()->waitForDone();
 		m_WorkerStarted = false;
 	}
@@ -82,24 +82,34 @@ bool WorkManager::SetupWorker(const AppConfig& appConfig)
 	return true;
 }
 
-void WorkManager::Prepare(const FTPConfig& ftpConfig)
+void WorkManager::Prepare(const FTPConfig& ftpConfig, const DBConfig& dbConfig)
 {
 	//	m_MainGUI->SetupWatcher(watchPath.toStdString().c_str());
 	//	connect(m_MonitorWorker,SIGNAL(timer_signal()),m_MainGUI,SLOT(timer_signaled()));
 	//	connect(m_MainGUI,SIGNAL(stop_signal()),m_MonitorWorker,SLOT(stop()));
 		m_MainWorker = new MainWorker(0);
-		m_MonitorWorker = new MonitorWorker(0);
+		m_DBWorker = new DBWorker(0);
+
+			//initialize mysql dB
+		m_DBWorker->SetDBConfig(dbConfig);
+		m_DBWorker->InitDB();
+		m_DBWorker->SetRoomNumber(m_RoomID);
+		m_DBWorker->SetKinectNumber(m_KinectID);
 
 		connect(this,SIGNAL(RecordStarted()),m_MainGUI,SLOT(OnRecordStarted()));
 		connect(m_MainWorker,SIGNAL(TransformSignal(QString)),m_MainGUI,SLOT(OnTransformSignal(QString)));
-		connect(m_MonitorWorker,SIGNAL(date_changed()),m_MainWorker,SLOT(OnDateChanged()));
+		connect(m_MainWorker,SIGNAL(DBSignal(QStringList)),m_DBWorker,SLOT(OnDBSignal(QStringList)));
+//		connect(m_MonitorWorker,SIGNAL(date_changed()),m_MainWorker,SLOT(OnDateChanged()));
 
 		m_MQ->Prepare();
 		m_MainWorker->SetContext(m_MQ->GetContext());
 		m_MainWorker->SetWorkingDirectory(m_WorkDir.toStdString().c_str());
 		m_MainWorker->SetFTPConfig(ftpConfig);
 		m_MainWorker->setAutoDelete(true);
-		m_MonitorWorker->setAutoDelete(true);
+		m_DBWorker->setAutoDelete(true);
+
+		m_MainGUI->SetMQContext(m_MQ->GetContext());
+		m_MainGUI->CreateMQSock();
 
 		SetupLogger(m_LogDir);
 }
@@ -128,7 +138,7 @@ void WorkManager::StartWorker()
 	if(!m_WorkerStarted)
 	{
 		QThreadPool::globalInstance()->start(m_MainWorker,QThread::LowPriority);
-		QThreadPool::globalInstance()->start(m_MonitorWorker,QThread::LowPriority);
+		QThreadPool::globalInstance()->start(m_DBWorker,QThread::LowPriority);
 		m_WorkerStarted = true;
 	}
 }

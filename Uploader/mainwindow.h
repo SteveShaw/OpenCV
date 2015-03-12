@@ -16,6 +16,13 @@ public:
 	explicit MainWindow(QWidget *parent = 0);
 	~MainWindow();
 
+	void SetMQContext(void* ctx)
+	{
+		m_MQCtx = ctx;
+	}
+
+	void CreateMQSock();
+
 //	void SetupWatcher(const char *path);
 
 signals:
@@ -23,6 +30,10 @@ signals:
 
 private:
 	Ui::MainWindow *ui;
+	void *m_MQCtx;
+	void *m_MQSock;
+
+	bool m_PauseRecord;
 //	QFileSystemWatcher* m_Watcher;
 
 //public slots:
@@ -30,10 +41,10 @@ private:
 //	void dir_change_signaled(const QString& path);
 private slots:
 	void on_buttonSetPath_clicked();
-	void on_buttonStartStop_clicked();
 
 	void OnRecordStarted();
 	void OnTransformSignal(QString msg);
+	void on_btnStartStop_clicked();
 };
 
 #endif // MAINWINDOW_H

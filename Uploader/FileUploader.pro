@@ -14,19 +14,19 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    monitorworker.cpp \
     workmanager.cpp \
     mainworker.cpp \
     msgqueue.cpp \
-    singleapp.cpp
+    singleapp.cpp \
+    DBWorker.cpp
 
 HEADERS  += mainwindow.h \
-    monitorworker.h \
     workmanager.h \
     mainworker.h \
     msgqueue.h \
     config.h \
-    singleapp.h
+    singleapp.h \
+    DBWorker.h
 
 FORMS    += mainwindow.ui
 

@@ -3,10 +3,14 @@
 #include <QDateTime>
 #include <QThreadPool>
 #include <QDir>
+#include <zmq.h>
 
 MainWindow::MainWindow(QWidget *parent) :
 	QMainWindow(parent),
-	ui(new Ui::MainWindow)
+	ui(new Ui::MainWindow),
+	m_MQCtx(NULL),
+	m_MQSock(NULL),
+	m_PauseRecord(false)
 //	m_Watcher(new QFileSystemWatcher(parent))
 {
 	ui->setupUi(this);
@@ -17,8 +21,18 @@ MainWindow::~MainWindow()
 	emit stop_signal();
 	QThreadPool::globalInstance()->waitForDone();
 
+	if(m_MQSock)
+	{
+		zmq_close(m_MQSock);
+	}
 	delete ui;
-//	delete m_Watcher;
+	//	delete m_Watcher;
+}
+
+void MainWindow::CreateMQSock()
+{
+	m_MQSock = zmq_socket(m_MQCtx,ZMQ_PUB);
+	zmq_bind(m_MQSock,"tcp://*:9988");
 }
 
 //void MainWindow::SetupWatcher(const char* path)
@@ -50,11 +64,6 @@ void MainWindow::on_buttonSetPath_clicked()
 
 }
 
-void MainWindow::on_buttonStartStop_clicked()
-{
-	//ui->buttonStartStop->setText("Stop");
-}
-
 void MainWindow::OnRecordStarted()
 {
 	QString now = QDateTime::currentDateTime().toString("yyyy-MM-dd:HH-mm-ss:zzz");
@@ -64,4 +73,20 @@ void MainWindow::OnRecordStarted()
 void MainWindow::OnTransformSignal(QString msg)
 {
 	ui->textEdit->append(msg);
+}
+
+void MainWindow::on_btnStartStop_clicked()
+{
+	m_PauseRecord = !m_PauseRecord;
+	if(m_PauseRecord)
+	{
+		zmq_send(m_MQSock,"PAU",3,0);
+		ui->btnStartStop->setText("Resume");
+	}
+	else
+	{
+		zmq_send(m_MQSock,"RES",3,0);
+		ui->btnStartStop->setText("Pause");
+	}
+
 }

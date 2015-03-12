@@ -5,7 +5,7 @@
 #include "config.h"
 
 class MainWindow;
-class MonitorWorker;
+class DBWorker;
 class MsgQueue;
 class MainWorker;
 
@@ -19,7 +19,7 @@ public:
 
 	bool SetupWorker(const AppConfig &appConfig);
 
-	void Prepare(const FTPConfig& ftpConfig);
+	void Prepare(const FTPConfig& ftpConfig, const DBConfig& dbConfig);
 
 	void StartRecorder();
 	void StartWorker();
@@ -51,7 +51,7 @@ private:
 
 	MsgQueue *m_MQ;
 	MainWorker *m_MainWorker;
-	MonitorWorker *m_MonitorWorker;
+	DBWorker *m_DBWorker;
 
 	bool m_WorkerStarted;
 };

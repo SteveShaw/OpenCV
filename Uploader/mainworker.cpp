@@ -19,6 +19,8 @@ MainWorker::MainWorker(QObject *parent)
 	:QObject(parent)
 	,m_ctx(NULL)
 	,m_DateChanged(false)
+	,m_Proc(NULL)
+	,m_ProcExitCode(-1)
 {
 
 }
@@ -140,38 +142,22 @@ CURLcode MainWorker::CreateFTPDirectory(CURL* curl,const char *host, const char*
 bool MainWorker::UploadThroughCURL(QProcess* proc, const QString &fileName, const QString &dirName,
 																	 const char *up, const QString &host)
 {
-	QString command = QString("curl.exe -T %1 ftp://%2@%3/%4/").arg(fileName).arg(up).arg(host).arg(dirName);
+	QString command = QString("curl.exe -T %1 --ftp-create-dirs ftp://%2@%3/%4/").arg(fileName).arg(up).arg(host).arg(dirName);
 	proc->start(command);
 	if(proc->waitForStarted())
 	{
 		proc->waitForReadyRead();
 		proc->waitForBytesWritten();
-		m_CurlMsg.clear();
-		m_CurlMsg.append(proc->readAll());
 		proc->waitForFinished();
 
 		while(proc->processId()>0)
 		{
-			m_CurlMsg.append(proc->readAll());
 			proc->waitForFinished();
 		}
 		proc->closeWriteChannel();
-
-		foreach(const QByteArray info, m_CurlMsg)
-		{
-			if(info.contains("Failed to connect"))
-			{
-				return false;
-			}
-		}
-		emit TransformSignal(QString("Output from curl:%1").arg(m_CurlMsg.join(' ').data()));
-
-		return true;
 	}
 
-	return false;
-
-
+	return true;
 }
 
 void MainWorker::run()
@@ -185,6 +171,7 @@ void MainWorker::run()
 	zmq_setsockopt(recorder, ZMQ_SUBSCRIBE, 0,0);
 	zmq_connect(recorder, "tcp://localhost:7777");
 
+
 	//do loop job
 
 	QDir qDir;
@@ -196,9 +183,9 @@ void MainWorker::run()
 
 	zmq_pollitem_t items[] = {{recorder,0,ZMQ_POLLIN,0}};
 
-	QByteArray remoteUrl("ftp://");
-	remoteUrl+=m_FTPConfig.host;
-	remoteUrl+="/";
+//	QByteArray remoteUrl("ftp://");
+//	remoteUrl+=m_FTPConfig.host;
+//	remoteUrl+="/";
 
 	QString nowDate = QDateTime::currentDateTime().toString("yyyy-MM-dd");
 
@@ -206,134 +193,149 @@ void MainWorker::run()
 
 	/* get a curl handle */
 	CURL *curl = curl_easy_init();
-	CURLcode res = CURLE_OK;
+//	CURLcode res = CURLE_OK;
 
 
 	QByteArray up = m_FTPConfig.user.toStdString().c_str();
 	up+=":";
 	up+=m_FTPConfig.pwd;
 
-	if(curl)
-	{
-		//check url exists
+//	if(curl)
+//	{
+//		//check url exists
 
 
-		int ok = MainWorker::CheckDirectoryExists(curl,m_FTPConfig.host.toStdString().c_str(),
-																							m_FTPConfig.path.toStdString().c_str(),
-																							nowDate.toStdString().c_str(),up);
-		if(ok==0)
-		{
-			curl_easy_cleanup(curl);
-			curl = curl_easy_init();
-			res = MainWorker::CreateFTPDirectory(curl,m_FTPConfig.host.toStdString().c_str(),
-																					 m_FTPConfig.path.toStdString().c_str(),
-																					 nowDate.toStdString().c_str(),up);
+//		int ok = MainWorker::CheckDirectoryExists(curl,m_FTPConfig.host.toStdString().c_str(),
+//																							m_FTPConfig.path.toStdString().c_str(),
+//																							nowDate.toStdString().c_str(),up);
+//		if(ok==0)
+//		{
+//			curl_easy_cleanup(curl);
+//			curl = curl_easy_init();
+//			res = MainWorker::CreateFTPDirectory(curl,m_FTPConfig.host.toStdString().c_str(),
+//																					 m_FTPConfig.path.toStdString().c_str(),
+//																					 nowDate.toStdString().c_str(),up);
 
-			if(res != CURLE_OK)
-			{
-				qxtLog->error(QString("curl_easy_perform() failed: %1\n").arg(curl_easy_strerror(res)));
-				emit TransformSignal(QString("curl_easy_perform() failed: %1\n").arg(curl_easy_strerror(res)));
-			}
-			else
-			{
-				qxtLog->info(QString("Completed create directory %1").arg(nowDate));
-				emit TransformSignal(QString("Completed create directory %1").arg(nowDate));
-			}
+//			if(res != CURLE_OK)
+//			{
+//				qxtLog->error(QString("curl_easy_perform() failed: %1\n").arg(curl_easy_strerror(res)));
+//				emit TransformSignal(QString("curl_easy_perform() failed: %1\n").arg(curl_easy_strerror(res)));
+//			}
+//			else
+//			{
+//				qxtLog->info(QString("Completed create directory %1").arg(nowDate));
+//				emit TransformSignal(QString("Completed create directory %1").arg(nowDate));
+//			}
 
-		}
+//		}
 
-		curl_easy_cleanup(curl);
-		curl = curl_easy_init();
+//		curl_easy_cleanup(curl);
+//		curl = curl_easy_init();
 
-		/* we want to use our own read function */
-		curl_easy_setopt(curl, CURLOPT_READFUNCTION, CurlHeper::read_callback);
+//		/* we want to use our own read function */
+//		curl_easy_setopt(curl, CURLOPT_READFUNCTION, CurlHeper::read_callback);
 
-		/* enable uploading */
-		curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
-	}
+//		/* enable uploading */
+//		curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
+//	}
 
 
-	QFile qFile;
+//	QFile qFile;
 
-	QByteArray target = "ftp://";
-	target += m_FTPConfig.host;
-	if(!target.endsWith("/"))target.append("/");
+//	QByteArray target = "ftp://";
+//	target += m_FTPConfig.host;
+//	if(!target.endsWith("/"))target.append("/");
 
-	if(res==CURLE_OK)
-	{
-		//target += m_FTPConfig.path;
-		//if(!target.endsWith("/"))target.append("/");
-		target.append(nowDate);
-		if(!target.endsWith("/"))target.append("/");
-	}
+//	if(res==CURLE_OK)
+//	{
+//		//target += m_FTPConfig.path;
+//		//if(!target.endsWith("/"))target.append("/");
+//		target.append(nowDate);
+//		if(!target.endsWith("/"))target.append("/");
+//	}
 
 	QList<QByteArray> errUploadList;
 
 	QProcess *proc = new QProcess();
-	proc->setProcessChannelMode(QProcess::ForwardedChannels);
+
+	m_Proc = proc;
+
+	QStringList dbItems;
+	dbItems<<" "<<" "<<" ";
+
+//	bool ok = false;
+//	int pct = 0;
+
+	qRegisterMetaType<QProcess::ExitStatus>("QProcess::ExitStatus");
+	qRegisterMetaType<QProcess::ProcessError>("QProcess::ProcessError");
+	connect(proc,SIGNAL(finished(int,QProcess::ExitStatus)),this,SLOT(OnFinished(int,QProcess::ExitStatus)));
+//	connect(proc,SIGNAL(readyReadStandardOutput()),this,SLOT(OnReadyReadStdOut()));
+//	connect(proc,SIGNAL(readyReadStandardError()),this,SLOT(OnReadyReadStdErr()));
+
+//	proc->setProcessChannelMode(QProcess::ForwardedChannels);
 
 	while(true)
 	{
 
 		//check date changed and make new directory on FTP
-		if(m_DateChanged && curl)
-		{
-			curl_easy_cleanup(curl);
-			curl = curl_easy_init();
+//		if(m_DateChanged && curl)
+//		{
+//			curl_easy_cleanup(curl);
+//			curl = curl_easy_init();
 
-			if(curl)
-			{
-				nowDate = QDateTime::currentDateTime().toString("yyyy-MM-dd");
-				int ok = MainWorker::CheckDirectoryExists(curl,m_FTPConfig.host.toStdString().c_str(),
-																									m_FTPConfig.path.toStdString().c_str(),
-																									nowDate.toStdString().c_str(),up);
-
-
-				if(ok==0)
-				{
-					curl_easy_cleanup(curl);
-					curl = curl_easy_init();
-					res = MainWorker::CreateFTPDirectory(curl,m_FTPConfig.host.toStdString().c_str(),
-																							 m_FTPConfig.path.toStdString().c_str(),
-																							 nowDate.toStdString().c_str(),up);
+//			if(curl)
+//			{
+//				nowDate = QDateTime::currentDateTime().toString("yyyy-MM-dd");
+//				int ok = MainWorker::CheckDirectoryExists(curl,m_FTPConfig.host.toStdString().c_str(),
+//																									m_FTPConfig.path.toStdString().c_str(),
+//																									nowDate.toStdString().c_str(),up);
 
 
-					if(res != CURLE_OK)
-					{
-						qxtLog->error(QString("curl_easy_perform() failed: %1\n").arg(curl_easy_strerror(res)));
-						emit TransformSignal(QString("curl_easy_perform() failed: %1\n").arg(curl_easy_strerror(res)));
-					}
-					else
-					{
-						qxtLog->info(QString("Completed create directory %1").arg(nowDate));
-						emit TransformSignal(QString("Completed create directory %1").arg(nowDate));
+//				if(ok==0)
+//				{
+//					curl_easy_cleanup(curl);
+//					curl = curl_easy_init();
+//					res = MainWorker::CreateFTPDirectory(curl,m_FTPConfig.host.toStdString().c_str(),
+//																							 m_FTPConfig.path.toStdString().c_str(),
+//																							 nowDate.toStdString().c_str(),up);
 
-						if(res==CURLE_OK)
-						{
-							target = "ftp://";
-							target += m_FTPConfig.host;
-							if(!target.endsWith("/"))target.append("/");
 
-							target += m_FTPConfig.path;
-							if(!target.endsWith("/"))target.append("/");
-							target.append(nowDate);
-							if(!target.endsWith("/"))target.append("/");
+//					if(res != CURLE_OK)
+//					{
+//						qxtLog->error(QString("curl_easy_perform() failed: %1\n").arg(curl_easy_strerror(res)));
+//						emit TransformSignal(QString("curl_easy_perform() failed: %1\n").arg(curl_easy_strerror(res)));
+//					}
+//					else
+//					{
+//						qxtLog->info(QString("Completed create directory %1").arg(nowDate));
+//						emit TransformSignal(QString("Completed create directory %1").arg(nowDate));
 
-							m_DateChanged = false;
-						}
-					}
-				}
+//						if(res==CURLE_OK)
+//						{
+//							target = "ftp://";
+//							target += m_FTPConfig.host;
+//							if(!target.endsWith("/"))target.append("/");
 
-				curl_easy_cleanup(curl);
-				curl = curl_easy_init();
-				/* we want to use our own read function */
-				curl_easy_setopt(curl, CURLOPT_READFUNCTION, CurlHeper::read_callback);
+//							target += m_FTPConfig.path;
+//							if(!target.endsWith("/"))target.append("/");
+//							target.append(nowDate);
+//							if(!target.endsWith("/"))target.append("/");
 
-				/* enable uploading */
-				curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
-			}
+//							m_DateChanged = false;
+//						}
+//					}
+//				}
 
-		}
+//				curl_easy_cleanup(curl);
+//				curl = curl_easy_init();
+//				/* we want to use our own read function */
+//				curl_easy_setopt(curl, CURLOPT_READFUNCTION, CurlHeper::read_callback);
+
+//				/* enable uploading */
+//				curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
+//			}
+
+//		}
 
 		//end check date changed
 
@@ -344,17 +346,42 @@ void MainWorker::run()
 
 		//check whether the error list is not empty and then upload one each time
 
-//		if(errUploadList.size()>0)
-//		{
-//			emit TransformSignal(QString("Reuploading File %1").arg(errUploadList.at(0).data()));
-//			res = MainWorker::UploadFile(curl,qFile,errUploadList.at(1).data(),errUploadList.at(0).data(),up.data());
+		if(errUploadList.size()>0)
+		{
+			emit TransformSignal(QString("Reuploading File %1").arg(errUploadList.at(0).data()));
+			UploadThroughCURL(proc,errUploadList.at(0).data(),errUploadList.at(1).data(),up.data(),m_FTPConfig.host);
+			while(m_ProcExitCode<0)
+			{
+				proc->waitForFinished();
+			}
+//			ok = false;
+//			foreach(const QByteArray &info, m_CurlMsg)
+//			{
+//				QByteArrayList info_items = info.split(' ');
+
+//				pct = info_items[0].toInt(&ok);
+//				if(pct==100 && ok)
+//				{
+//					ok = true;
+//					break;
+//				}
+//			}
+
+			if(m_ProcExitCode==0)
+			{
+				emit TransformSignal(QString("Completed uploading File %1").arg(errUploadList.at(0).data()));
+				errUploadList.pop_front();
+				errUploadList.pop_front();
+			}
+
+			m_ProcExitCode = -1;
 //			if(res==CURLE_OK)
 //			{
 //				emit TransformSignal(QString("Completed uploading File %1").arg(errUploadList.at(0).data()));
 //				errUploadList.pop_front();
 //				errUploadList.pop_front();
 //			}
-//		}
+		}
 
 
 		//end checking error list
@@ -370,6 +397,8 @@ void MainWorker::run()
 
 		if(items[0].revents & ZMQ_POLLIN)
 		{
+
+
 			int rv_len = zmq_recv(recorder,recordBuffer.data(),MAX_SIZE,ZMQ_DONTWAIT);
 			if(rv_len > 0 && rv_len < MAX_SIZE - 1)
 			{
@@ -379,6 +408,8 @@ void MainWorker::run()
 
 				if(item_list.size()==5)
 				{
+					nowDate = QDateTime::currentDateTime().toString("yyyy-MM-dd");
+
 					QDir localDir;
 					localDir.setPath(item_list[2]);
 
@@ -386,32 +417,79 @@ void MainWorker::run()
 					emit TransformSignal(localDir.absoluteFilePath(item_list[4]));
 
 
-					bool ok = UploadThroughCURL(proc,localDir.absoluteFilePath(item_list[3]),nowDate,up.data(),m_FTPConfig.host);
-					if(ok)
+					UploadThroughCURL(proc,localDir.absoluteFilePath(item_list[3]),nowDate,up.data(),m_FTPConfig.host);
+//					ok = false;
+//					foreach(const QByteArray &info, m_CurlMsg)
+//					{
+//						QByteArrayList info_items = info.split(' ');
+
+//						pct = info_items[0].toInt(&ok);
+//						if(pct==100 && ok)
+//						{
+//							ok = true;
+//							break;
+//						}
+//					}
+
+//					m_CurlMsg.clear();
+					while(m_ProcExitCode<0)
+					{
+						proc->waitForFinished();
+					}
+
+					if(m_ProcExitCode==0)
 					{
 						emit TransformSignal(QString("Completed uploading File %1").arg(item_list[3].data()));
+						dbItems[0] = item_list[0];
+						dbItems[1] = item_list[1];
+						dbItems[2] = item_list[3];
+						emit DBSignal(dbItems);
 					}
 					else
 					{
-						emit TransformSignal(QString("Failed to uploading File %1").arg(item_list[3].data()));
+						emit TransformSignal(QString("Failed to uploading File %1 -- Error:%2").arg(item_list[3].data()).arg(m_ProcExitCode));
 						QString filePath = localDir.absoluteFilePath(item_list[3]);
 						errUploadList.append(filePath.toStdString().c_str());
-						errUploadList.append(target);
+						errUploadList.append(nowDate.toStdString().c_str());
 					}
 
-					ok = UploadThroughCURL(proc,localDir.absoluteFilePath(item_list[4]),nowDate,up.data(),m_FTPConfig.host);
+					m_ProcExitCode = -1;
 
-					if(ok)
+					UploadThroughCURL(proc,localDir.absoluteFilePath(item_list[4]),nowDate,up.data(),m_FTPConfig.host);
+					while(m_ProcExitCode<0)
+					{
+						proc->waitForFinished();
+					}
+//					ok = false;
+//					foreach(const QByteArray &info, m_CurlMsg)
+//					{
+//						QByteArrayList info_items = info.split(' ');
+//						pct = info_items[0].toInt(&ok);
+//						if(pct==100 && ok)
+//						{
+//							ok = true;
+//							break;
+//						}
+//					}
+
+//					m_CurlMsg.clear();
+
+					if(m_ProcExitCode==0)
 					{
 						emit TransformSignal(QString("Completed uploading File %1").arg(item_list[4].data()));
+						dbItems[0] = item_list[0];
+						dbItems[1] = item_list[1];
+						dbItems[2] = item_list[4];
+						emit DBSignal(dbItems);
 					}
 					else
 					{
-						emit TransformSignal(QString("Failed to uploading File %1").arg(item_list[4].data()));
-						QString filePath = localDir.absoluteFilePath(item_list[3]);
+						emit TransformSignal(QString("Failed to uploading File %1 -- Error:%2").arg(item_list[3].data()).arg(m_ProcExitCode));
+						QString filePath = localDir.absoluteFilePath(item_list[4]);
 						errUploadList.append(filePath.toStdString().c_str());
-						errUploadList.append(target);
+						errUploadList.append(nowDate.toStdString().c_str());
 					}
+					m_ProcExitCode = -1;
 
 //					if(curl)
 //					{
@@ -472,6 +550,7 @@ void MainWorker::run()
 	zmq_close(recorder);
 
 	delete proc;
+	m_Proc = NULL;
 	proc = NULL;
 }
 
@@ -513,5 +592,40 @@ void MainWorker::OnDateChanged()
 		}
 	}
 }
+
+void MainWorker::OnFinished(int exitCode, QProcess::ExitStatus exitStat)
+{
+	m_ProcExitStat = exitStat;
+	m_ProcExitCode = exitCode;
+}
+
+//void MainWorker::OnReadyReadStdOut()
+//{
+//	if(m_Proc!=NULL)
+//	{
+//		QByteArray info = m_Proc->readAllStandardOutput();
+//		if(info.size()>0)
+//		{
+//			m_CurlMsg.append(info);
+//			emit TransformSignal(QString(info));
+//		}
+
+//	}
+//}
+
+//void MainWorker::OnReadyReadStdErr()
+//{
+//	if(m_Proc!=NULL)
+//	{
+//		QByteArray info = m_Proc->readAllStandardError();
+
+//		if(info.size()>0)
+//		{
+//			m_CurlMsg.append(info);
+//			emit TransformSignal(QString(info));
+//		}
+
+//	}
+//}
 
 
