@@ -17,7 +17,7 @@ KinectCapture::KinectCapture()
 	,m_depth_video_writer(new cv::VideoWriter)
 	,m_frame_count(0)
 	,m_max_frame_count(FRAMECOUNT)
-	,m_pColorSpacePoints(NULL)
+//	,m_pColorSpacePoints(NULL)
 {
 	//qDebug()<<"Color Image Size="<<ColorImageSize;
 }
@@ -58,7 +58,7 @@ bool KinectCapture::Initialize()
 	DWORD frame_type = FrameSourceTypes::FrameSourceTypes_Depth |  FrameSourceTypes::FrameSourceTypes_Color;
 	HRESULT hr = m_pKinectSensor->get_CoordinateMapper(&m_pCoordinateMapper);
 
-	m_pColorSpacePoints	= new ColorSpacePoint[DepthImageWidth * DepthImageHeight];
+//	m_pColorSpacePoints	= new ColorSpacePoint[DepthImageWidth * DepthImageHeight];
 
 	if (SUCCEEDED(hr))
 	{
@@ -87,6 +87,7 @@ bool KinectCapture::ProcessArrivedFrame(IMultiSourceFrameArrivedEventArgs *args)
 
 	IColorFrame *pColorFrame = NULL;
 	IDepthFrame *pDepthFrame = NULL;
+	IBodyFrame* pBodyFrame = NULL;
 
 	if(SUCCEEDED(args->get_FrameReference(&pMultiSourceFrameReference)))
 	{
@@ -125,9 +126,26 @@ bool KinectCapture::ProcessArrivedFrame(IMultiSourceFrameArrivedEventArgs *args)
 				}
 			}
 
+			//capture body frame
+//			if(SUCCEEDED(hr))
+//			{
+//				IBodyFrameReference* pBodyFrameReference = NULL;
+//				hr = pMultiSourceFrame->get_BodyFrameReference(&pBodyFrameReference);
+//				if(SUCCEEDED(hr))
+//				{
+//					hr = pBodyFrameReference->AcquireFrame(&pBodyFrame);
+//				}
+
+//				if(pBodyFrameReference!=NULL)
+//				{
+//					pBodyFrameReference->Release();
+//					pBodyFrameReference = NULL;
+//				}
+//			}
+
 			if(SUCCEEDED(hr))
 			{
-				result = this->SaveAcquiredFrames(pColorFrame,pDepthFrame);
+				result = this->SaveAcquiredFrames(pColorFrame,pDepthFrame, pBodyFrame);
 			}
 
 		}
@@ -204,7 +222,7 @@ void KinectCapture::ProcessDepthFrame(UINT16 *pBuffer, USHORT nMinDepth, USHORT 
 	}
 }
 
-bool KinectCapture::SaveAcquiredFrames(IColorFrame *cf, IDepthFrame *df)
+bool KinectCapture::SaveAcquiredFrames(IColorFrame *cf, IDepthFrame *df, IBodyFrame* /*bf*/)
 {
 	bool ok = false;
 
@@ -459,8 +477,29 @@ void KinectCapture::Release()
 		m_depth_video_writer->release();
 	}
 
-	delete[] m_pColorSpacePoints;
+//	delete[] m_pColorSpacePoints;
 
 }
+
+//save body frame data
+//bool KinectCapture::SaveBodyFrame(IBodyFrame *pBodyFrame)
+//{
+//	IBodyFrameSource* pBodyFrameSource = NULL;
+//	hr = pBodyFrame->get_BodyFrameSource(&pBodyFrameSource);
+
+//	if(SUCCEEDED(hr))
+//	{
+//		INT32 nBodyCount = 0;
+//		hr = pBodyFrameSource->get_BodyCount(&nBodyCount);
+//		if(SUCCEEDED(hr))
+//		{
+//			hr = pBodyFrame->GetAndRefreshBodyData(nBodyCount,&m_pBodyData);
+//			if(SUCCEEDED(hr))
+//			{
+//			}
+//		}
+//	}
+//	return true;
+//}
 
 

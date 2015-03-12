@@ -18,13 +18,18 @@ void GrabWorker::run()
 {
 	void* rcv = zmq_socket(_ctx,ZMQ_SUB);
 	zmq_setsockopt(rcv,ZMQ_SUBSCRIBE,0,0);
-
 	zmq_connect(rcv,"inproc://stopper");
 
 	void* pusher = zmq_socket(_ctx,ZMQ_PUSH);
 	zmq_bind(pusher,"inproc://writer");
 
+	void* pauser = zmq_socket(_ctx,ZMQ_SUB);
+	zmq_setsockopt(pauser,ZMQ_SUBSCRIBE,0,0);
+	zmq_connect(pauser,"tcp://localhost:9988");//pause the current thread recording
+
 	char buf[8];
+
+	bool pause = false;
 //	QProcess *proc = new QProcess();
 //	//proc->setProcessChannelMode(QProcess::ForwardedChannels);
 
@@ -45,6 +50,24 @@ void GrabWorker::run()
 			break;
 		}
 
+		int len = zmq_recv(pauser,buf,7,ZMQ_DONTWAIT);
+
+		if(len>0 &&  len < 7)
+		{
+			buf[len] = '\0';
+			QByteArray inst(buf);
+			if(inst=="PAU")
+			{
+				qDebug()<<"Record Paused";
+				pause = true;
+			}
+			else if(inst=="RES")
+			{
+				qDebug()<<"Record Resumed";
+				pause = false;
+			}
+		}
+
 		if(WaitForSingleObject(reinterpret_cast<HANDLE>(_kc->_evt_frame_ready), INFINITE)==WAIT_OBJECT_0)
 		{
 
@@ -55,7 +78,7 @@ void GrabWorker::run()
 				if(SUCCEEDED(_kc->Reader()->GetMultiSourceFrameArrivedEventData(_kc->_evt_frame_ready,&args)))
 				{
 					//qDebug()<<"Frame Arrived";
-					if(_kc->ProcessArrivedFrame(args))
+					if(!pause && _kc->ProcessArrivedFrame(args))
 					{
 						//Send file name to database thread
 						if(_kc->CurrentFrameCount()==0)
@@ -106,6 +129,7 @@ void GrabWorker::run()
 
 	zmq_close(rcv);
 	zmq_close(pusher);
+	zmq_close(pauser);
 }
 
 

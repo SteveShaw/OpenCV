@@ -32,20 +32,20 @@ public:
 				return m_pFrameReader;
     }
 
-    IColorFrameReader* const ColorReader()
-    {
-        return _icolor;
-    }
+//    IColorFrameReader* const ColorReader()
+//    {
+//        return _icolor;
+//    }
 
-    IDepthFrameReader* const DepthReader()
-    {
-        return _idepth;
-    }
+//    IDepthFrameReader* const DepthReader()
+//    {
+//        return _idepth;
+//    }
 
-    IBodyFrameReader* const BodyReader()
-    {
-        return _ibody;
-    }
+//    IBodyFrameReader* const BodyReader()
+//    {
+//        return _ibody;
+//    }
 
     bool ProcessArrivedFrame(IMultiSourceFrameArrivedEventArgs *args);
 
@@ -90,6 +90,9 @@ public:
 		void Release();
 
 protected:
+
+//		bool SaveBodyFrame(IBodyFrame* pBodyFrame);
+
 		bool ProcessDepthFrame(IDepthFrame* pDepthFrame);
 
 		bool ProcessColorFrame(IColorFrame* pColorFrame);
@@ -100,7 +103,7 @@ protected:
 
 //		bool CaptureColorFrame(IMultiSourceFrame* sf, int frame_count);
 
-		bool SaveAcquiredFrames(IColorFrame* cf, IDepthFrame* df);
+		bool SaveAcquiredFrames(IColorFrame* cf, IDepthFrame* df, IBodyFrame *bf=NULL);
 
 
 //    void WriteVideo();
@@ -117,9 +120,10 @@ private:
 //    std::unique_ptr<IMultiSourceFrameReader> _frame_reader;
 		IMultiSourceFrameReader *m_pFrameReader;
 
-    IColorFrameReader* _icolor;
-    IDepthFrameReader* _idepth;
-    IBodyFrameReader* _ibody;
+//    IColorFrameReader* _icolor;
+//    IDepthFrameReader* _idepth;
+//    IBodyFrameReader* _ibody;
+//		IBody m_pBodyData[6];
 
 		ICoordinateMapper*	m_pCoordinateMapper;
 
@@ -141,7 +145,7 @@ private:
 		cv::Mat m_scaled_mat;
 		cv::Mat m_bgr_mat;
 
-		ColorSpacePoint* m_pColorSpacePoints;
+//		ColorSpacePoint* m_pColorSpacePoints;
 
 
     QScopedPointer<cv::VideoWriter> m_color_video_writer;
