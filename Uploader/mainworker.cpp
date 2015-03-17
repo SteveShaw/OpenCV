@@ -484,7 +484,7 @@ void MainWorker::run()
 					}
 					else
 					{
-						emit TransformSignal(QString("Failed to uploading File %1 -- Error:%2").arg(item_list[3].data()).arg(m_ProcExitCode));
+						emit TransformSignal(QString("Failed to uploading File %1 -- Error:%2").arg(item_list[4].data()).arg(m_ProcExitCode));
 						QString filePath = localDir.absoluteFilePath(item_list[4]);
 						errUploadList.append(filePath.toStdString().c_str());
 						errUploadList.append(nowDate.toStdString().c_str());
